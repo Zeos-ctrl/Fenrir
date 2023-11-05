@@ -7,3 +7,8 @@ which is best.
 
 ## Current questions
 1. How are the hash functions mapped to G1 and G2
+
+## Helpful notes
+- The Weil pairing on an elliptic curve is used for identity-based key establishment
+and encryption methods (http://www.errthum.com/eric/Works/tatevweil.pdf)
+- DO ETHICS FORMS

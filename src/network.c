@@ -1,5 +1,11 @@
 #include <openssl/ecdsa.h>
 
+enum Domain
+{
+    INTER,
+    INTRA
+};
+/*
 // This function is used to send a message to the other node. It encrypts the 
 // message using the symmetric key and sends it to the other node.
 // Path: network.c
@@ -31,3 +37,4 @@ void connnect_to_device_eccdh()
 {
     return;
 }
+*/

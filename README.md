@@ -11,7 +11,7 @@ and encryption methods (http://www.errthum.com/eric/Works/tatevweil.pdf)
 
 Steps to generate pairings:
 1. Initialize relic
-2. Generate perameters
-3. Choose curve 
+2. Generate parameters
+3. Choose curve (Ed curve)
 4. Compute Tate pairing
 5. Store Pairing results

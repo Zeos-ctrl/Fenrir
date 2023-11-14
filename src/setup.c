@@ -28,7 +28,7 @@ void device_setup_root()
     g1_null(public_key);
     g1_null(private_key);
 
-    bn_new(master); /* Initialize master secret */
+    bn_new(order); /* Initialize master secret */
     pc_get_ord(order); /* Get the order of the group */ 
     bn_rand_mod(master, order); /* Generate random master secret */
 
@@ -48,6 +48,7 @@ void device_setup_root()
 
     /* Gen public parameter: Q = master secret + public key */ 
     g1_t master_public;
+    g1_null(master_public);
     g1_add(master_public, master, public_key);
 
     // Prints values for debugging

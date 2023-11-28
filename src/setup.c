@@ -9,11 +9,6 @@
 
 #include "../include/crypto.h"
 
-// This function is called to set up the root node. It generates the bilinear 
-// pairing groups, the master secret key, and the public parameter Qr.
-// Path: setup.c
-// Parameters:
-//    none
 void device_setup_root()
 {
     size_t i;
@@ -54,7 +49,7 @@ void device_setup_root()
     // Prints values for debugging
     printf("Master secret root: \n");
     bn_print(master);
-    printf("\nQ: \n");
+    printf("\nShared Value Q: \n");
     g1_print(master_public);
     printf("\nPublic key root: \n");
     /* Print the value for debugging */
@@ -76,24 +71,12 @@ void device_setup_root()
     return;
 }
 
-// This function is called to set up the gateway node. It sends the gateways 
-// id to the root node and receives the public key, private key, shared value 
-// and secret value from the root node.
-// Path: setup.c
-// Parameters:
-//   none
 void device_setup_gateway()
 {
     char *identity = "gateway";
     return;
 }
 
-// This function is called to set up the worker node. It sends the workers id
-// to the gateway node and receives the public key, private key, shared value 
-// and secret value from the gateway node.
-// Path: setup.c
-// Parameters:
-//  none
 void device_setup_worker()
 {
     char *identity = "worker";

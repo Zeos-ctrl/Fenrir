@@ -2,7 +2,9 @@
 #include <relic/relic_err.h>
 #include <relic/relic_pc.h>
 #include <openssl/evp.h> /* OpenSSL EVP headers for hashing */
+#include <ascon/ascon.h> /* ASCON AEAD headers for symmetric encryption */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,167 +14,283 @@
 struct key_pair /* Key pair struct */
 {
     g1_t public_key; /* Public key member of G1 */
-    g1_t private_key; /* Private key member of G1 */
-    g1_t public_peram; /* Public perameter member of G1 */
+    g1_t k1; /* Private key member of G1 */
+    g2_t k2; /* Private key member of G2 */
+    g1_t Q; /* Public perameter member of G1 */
     bn_t secret; /* Secret value member of Z */
 };
 
-/*
- * This function is ran on the Parent node and gens the public and private keys 
- * for the requesting Child node, returning the public key, private key, shared value, and 
- * secret value. <sPk, Pk, x, Qx> 
- * Path: crypto.c 
- * Parameters:
- *  int node_id: The ID of the node requesting to join the network 
- *  struct key_pair *parent: The perameters for the parent node 
- *  struct key_pair *child: The empty struct for the child node 
-*/
-void gen_key_pair(char *child_id, struct key_pair *parent, struct key_pair *child)
+int gen_key_pair(struct key_pair *child, char *child_id, struct key_pair *parent, bn_t master)
 {
-    size_t i;
-    bn_t secret_value;
-    bn_t order;
-    g1_t public_key;
-    g1_t private_key;
-    g1_t public_peram;
-
-    bn_null(secret_value);
-    bn_null(order);
-    g1_null(private_key);
-    g1_null(public_key);
-    g1_null(public_peram);
-
-    /* Hash Identity to gen pub key */
+    int code = RLC_ERR;
+    g1_t P; /* Unmapped Private key */
+    bn_t N; /* Order of the group */
     unsigned int md_len; /* Hash length */
     EVP_MD_CTX *mdctx; /* Hashing context */
     unsigned char hash[EVP_MAX_MD_SIZE]; /* Hash value */
 
-    mdctx = EVP_MD_CTX_new(); /* Initialize ctx */ 
-    const EVP_MD *EVP_sha3_256() /* Get the sha3 hash function */;
+    RLC_TRY {
+        g1_null(P);
+        g1_null(child->public_key);
+        g1_null(child->k1);
+        g2_null(child->k2);
+        g1_null(child->Q);
+        bn_null(child->secret);
+        bn_null(N);
 
-    EVP_DigestInit_ex(mdctx, EVP_sha3_256(), NULL); /* Initialize the hash function */
-    EVP_DigestUpdate(mdctx, child_id, strlen(child_id)); /* Hash the node ID */
-    EVP_DigestFinal_ex(mdctx, hash, &md_len); /* Finalize the hash function */
+        /* Gen shared value */
+        bn_new(N);
+        pc_get_ord(N); /* Get the order of the group G1 */
+        bn_rand_mod(child->secret, N); /* Gen random number in Zq */
 
-    g1_map(public_key, hash, sizeof(hash)); /* Map public key to G1 */
+        /* Hash Identity to gen pub key */
 
-    /* Gen private key: priv_key = gateway_root_secret * public_key + private_key_gateway */
-    g1_t str; 
-    g1_add(str, parent->secret, public_key); /* Should be mul */
-    g1_add(private_key, parent->private_key, str);
+        mdctx = EVP_MD_CTX_new(); /* Initialize ctx */ 
+        const EVP_MD *EVP_sha3_256() /* Get the sha3 hash function */;
 
-    bn_new(secret_value); /* Gen secret value */
-    pc_get_ord(order); /* Get the order of the group */ 
-    bn_rand_mod(secret_value, order); /* Gen random value in Zq */
+        EVP_DigestInit_ex(mdctx, EVP_sha3_256(), NULL); /* Initialize the hash function */
+        EVP_DigestUpdate(mdctx, child_id, strlen(child_id)); /* Hash the node ID */
+        EVP_DigestFinal_ex(mdctx, hash, &md_len); /* Finalize the hash function */
 
-    /* Gen public perameter: public_peram = shared_value * private_key_root */
-    g1_mul(public_peram, secret_value, parent->private_key);
+        g1_map(child->public_key, hash, sizeof(hash)); /* Map public key to G1 */
 
-    /* Prints values for debugging */
-    printf("Node secret: \n");
-    bn_print(secret_value);
-    printf("\nPublic key: \n");
-    /* Print the value for debugging */
-    for (i = 0; i < md_len; i++)
-    {
-        printf("%02x", hash[i]);
+        /* Gen private key */ 
+        g1_t temp;
+        g1_null(temp);
+
+        g1_mul(temp, child->public_key, master); /* temp = Pk * x */
+        g1_add(P, parent->k1, temp); /* PkC = PkP + temp */
+        g1_free(temp);
+
+        /* Map private key to groups */
+        g1_map(child->k1, (uint8_t *)P, sizeof(P));
+        g1_mul(child->k1, child->k1, master);
+        g2_map(child->k2, (uint8_t *)P, sizeof(P));
+        g2_mul(child->k2, child->k2, master);
+
+        /* Gen public perameter */ 
+        g1_mul(child->Q, parent->Q, master); /* Qx = Qx * x */
+
+    } RLC_CATCH_ANY {
+        RLC_THROW(ERR_CAUGHT);
+    } RLC_FINALLY {
+        g1_free(P);
+        bn_free(N);
+        EVP_MD_CTX_free(mdctx);
     }
-    printf("\nPrivate key node: \n");
-    g1_print(private_key);
-    printf("\nIdentity node: %s\n", child_id);
+    code = RLC_OK;
 
-    /* Save key info */
-
-    /* Clean up memory */ 
-    bn_free(master);
-    g1_free(public_key);
-    g1_free(private_key);
-    g1_free(str);
-    EVP_MD_CTX_free(mdctx);
-
-    return;
+    return code;
 }
 
-/* 
- * This function is used to encrypt a message using the symmetric key gend 
- * to send to the other node using the PRESENT cipher.
- * Path: crypto.c
- * Parameters:
- *  char *message: The message to be encrypted 
- *  int message_len: The length of the message 
- *  char *key: The symmetric key to encrypt the message with 
- *  int key_len: The length of the symmetric key 
-void encrypt_with_sym_key(char *message, int message_len, char *key, int key_len)
+int ascon_enc(uint8_t *buffer, size_t plaintext_len, char *plaintext,
+        uint8_t *key, uint8_t *nonce)
 {
-    return;
-}
-*/
+    ascon_aead_ctx_t ctx;
+    ascon_aead128a_init(&ctx, key, nonce);
 
-/* 
- * This function is used to decrypt a message using the symmetric key send 
- * using the PRESENT cipher.
- * Path: crypto.c
- * Parameters:
- *  char *message: The message to be decrypted 
- *  int message_len: The length of the message 
- *  char *key: The symmetric key to decrypt the message with 
- *  int key_len: The length of the symmetric key
-void decrypt_with_sym_key(char *message, int message_len, char *key, int key_len)
-{
-    return;
-}
-*/
+    size_t ciphertext_len = 0;
 
-/* 
- * This function is used to decrypt a message sent from outside the local domain 
- *
- * Received as Ciphertext = <C0, C1, V> the worker can decrypt the message using 
- * its secret key as follows: 
- *
- * nodes secret key = gateway secret key + nodes public key * secret element pG, 
- * where pG is the secret point known only by the gateway and the worker node. 
- * d = (e(C0, nodes secret key) / e(public perameter Qw, C1)) 
- * m = V XOR H2(d) 
- * Path: crypto.c 
- * Parameters: 
- *  char *message: The message to be decrypted 
- *  int message_len: The length of the message 
- *  struct key_pair *receiver: The public, private key pair of the receiving node  
- *  char *pub_key: The public key of the sending node
-void dec_cipher_inter(char *message, int message_len, struct key_pair *receiver, char *pub_key)
-{
-    return;
-}
-*/
+    ciphertext_len += ascon_aead128_encrypt_update(
+            &ctx, buffer + ciphertext_len,
+            (uint8_t*) plaintext, strlen(plaintext));
 
-// This function is used to encrypt a message to send to a node outside the local domain
-//
-// Ciphertext = <rPkr, rPkn, H2(g^r) XOR m>, where 
-// r is a random number in the set Zq not including 0, Pkr is the public key of
-// the root node, Pkn is the public key of the node receiving the message, H2 is 
-// a hash function, g is a generator of the group G1, and m is the message.
-// Path: crypto.c
-// Parameters:
-//  char *message: The message to be encrypted
-//  int message_len: The length of the message 
-//  struct key_pair *sender: The public, private key pair of the sending node 
-//  char *pub_key_receiver: The public key of the receiving node
-/*
-void enc_cipher_inter(char *message, int message_len, struct key_pair *sender, char *pub_key_receiver)
-{
-    return;
+    uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN];
+
+    ciphertext_len += ascon_aead128_encrypt_final(
+            &ctx, buffer + ciphertext_len,
+            tag, sizeof(tag));
+
+    printf("Ciphertext: %s\n", buffer);
+    printf("Tag: %s\n", tag);
+
+    /* Clean up */
+    ascon_aead_cleanup(&ctx);
+    return 0;
 }
-*/
-// This function is used to gen the symmetric key using the public key of 
-// the receiving node and the public, private key pair of the sending node using 
-// bilinear pairing. (SOK key agreement)
-// Path: crypto.c
-// Parameters:
-//   struct key_pair *sender: The public, private key pair of the sending node 
-//   char *receiver: The public key of the receiving node 
-/*
-void sok_gen_sym_key(struct key_pair *sender, char *receiver)
+
+int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
+        uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
-    return;
+    ascon_aead_ctx_t ctx;
+    ascon_aead128a_init(&ctx, key, nonce);
+    size_t plaintext_len = 0;
+
+    plaintext_len += ascon_aead128_decrypt_update(
+            &ctx, buffer,
+            buffer, ciphertext_len);
+
+    bool is_tag_valid = false;
+
+    plaintext_len += ascon_aead128_decrypt_final(
+            &ctx, buffer + plaintext_len,
+            &is_tag_valid, tag, sizeof(tag));
+
+    buffer[plaintext_len] = '\0'; // Null terminated, because it's text
+    ascon_aead_cleanup(&ctx);
+
+    return 0;
 }
-*/
+
+int aes_enc(unsigned char *plaintext, int plaintext_len, unsigned char *key,
+        unsigned char *iv, unsigned char *ciphertext)
+{
+    EVP_CIPHER_CTX *ctx;
+    int len;
+    int ciphertext_len;
+
+    if(!(ctx = EVP_CIPHER_CTX_new())) {
+        printf("Error creating context\n");
+        return 1;
+    }
+
+    if(1 != EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv)) {
+        printf("Error initialising encryption\n");
+        return 1;
+    }
+
+    if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, strlen ((char *)plaintext))) {
+        printf("Error encrypting\n");
+        return 1;
+    }
+    ciphertext_len = len;
+
+    if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
+        printf("Error finalising\n");
+        return 1;
+    }
+    ciphertext_len += len;
+
+    /* Clean up */ 
+    EVP_CIPHER_CTX_free(ctx);
+
+    printf("\nCiphertext is: \n");
+    BIO_dump_fp (stdout, (const char *)ciphertext, ciphertext_len);
+
+    return ciphertext_len;
+}
+
+int aes_dec(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
+        unsigned char *iv, unsigned char *decryptedtext)
+{
+    EVP_CIPHER_CTX *ctx;
+    int len;
+    int plaintext_len;
+
+    /* Create and initialise the context */ 
+    if(!(ctx = EVP_CIPHER_CTX_new())) {
+        printf("Error creating context\n");
+        return 1;
+    }
+
+    /* Initialise the decryption operation. */ 
+    if(1 != EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv)) {
+        printf("Error initialising decryption\n");
+        return 1;
+    }
+
+    /* Provide the message to be decrypted, and obtain the plaintext output.
+     * EVP_DecryptUpdate can be called multiple times if necessary
+     */ 
+    if(1 != EVP_DecryptUpdate(ctx, decryptedtext, &len, ciphertext, ciphertext_len)) {
+        printf("Error decrypting\n");
+        return 1;
+    } 
+    plaintext_len = len;
+
+    /* Finalise the decryption. Further plaintext bytes may be written at
+     * this stage.
+     */ 
+    if(1 != EVP_DecryptFinal_ex(ctx, decryptedtext + len, &len)) {
+        printf("Error finalising\n");
+        return 1;
+    }
+    plaintext_len += len;
+
+    /* Clean up */ 
+    EVP_CIPHER_CTX_free(ctx);
+    
+    /* Add a NULL terminator. We are expecting printable text */ 
+    BIO_dump_fp (stdout, (const char *)decryptedtext, plaintext_len);
+    decryptedtext[plaintext_len] = '\0';
+    printf("Decrypted text is: %s\n", decryptedtext);
+
+    return plaintext_len;
+}
+
+int sok_gen_sym_key(struct key_pair *sender, char *receiver)
+{        
+    int first = 0, code = RLC_ERR;
+    size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);
+    uint8_t *buf;
+    uint8_t *key;
+    g1_t p;
+    g2_t q;
+    gt_t e;
+
+    RLC_TRY {
+        g1_new(p);
+        g2_new(q);
+        gt_new(e);
+
+        size = gt_size_bin(e, 0);
+        buf = RLC_ALLOCA(uint8_t, size);
+        if (buf == NULL) {
+            RLC_THROW(ERR_NO_MEMORY);
+        }
+
+        printf("Math...\n");
+        if (len1 == len2) {
+            if (strncmp((char *)sender->public_key, receiver, len1) == 0) {
+                RLC_THROW(ERR_NO_VALID);
+            }
+            first = (strncmp((char *)sender->public_key, receiver, len1) < 0 ? 1 : 2);
+        } else {
+            if (len1 < len2) {
+                if (strncmp((char *)sender->public_key, receiver, len2) == 0) {
+                    first = 2;
+                } else {
+                    first = (strncmp((char *)sender->public_key, receiver, len2) < 0 ? 1 : 2);
+                }
+            }
+        }
+        
+        printf("Generating shared value...\n");
+        if (pc_map_is_type1()) {
+            g2_map(q, (uint8_t *)receiver, len2);
+            pc_map(e, sender->k1, q);
+        } else {
+            if (first == 1) {
+                g2_map(q, (uint8_t *)receiver, len2);
+                pc_map(e, sender->k1, q);
+            } else {
+                g1_map(p, (uint8_t *)receiver, len2);
+                pc_map(e, p, sender->k2);
+            }
+        }
+
+        printf("Writing key to buffer...\n");
+        key = RLC_ALLOCA(uint8_t, 128);
+        gt_write_bin(buf, size, e, 0);
+        md_kdf(key, 128, buf, size);
+
+        /* Print the key */ 
+        printf("\nKey: ");
+        for (int i = 0; i < 16; i++) {
+            printf("%02x", key[i]);
+        }
+        printf("\n");
+
+    } RLC_CATCH_ANY {
+        RLC_THROW(ERR_CAUGHT);
+    } RLC_FINALLY {
+        g1_free(p);
+        g2_free(q);
+        gt_free(e);
+        RLC_FREE(buf);
+        RLC_FREE(key);
+    }
+    code = RLC_OK;
+ 
+    return code;
+}

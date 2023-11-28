@@ -24,6 +24,10 @@ int main(int argc, char *argv[])
         pc_param_print();
         goto exit;
     }
+    
+    pc_param_print();
+    int level = pc_param_level();
+    printf("\nSecurity level: %d\n", level);
 
     printf("Relic initialized\n\n");
 

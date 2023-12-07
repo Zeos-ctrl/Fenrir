@@ -6,8 +6,10 @@
 #include <relic/relic_bn.h>
 #include <relic/relic_core.h>
 #include <relic/relic_cp.h>
+#include <relic/relic_epx.h>
 #include <relic/relic_err.h>
 #include <relic/relic_pc.h>
+#include <relic/relic_ep.h>
 #include <ascon/ascon.h> /* ASCON headers for symmetric encryption */
 #include <stdint.h>
 #include <stdlib.h>
@@ -499,6 +501,21 @@ int test_aes(void)
     return 0;
 }
 
+int gen_curve(void)
+{
+    int code = RLC_ERR;
+    RLC_TRY {
+        // Configure a bn-254 curve 
+    }RLC_CATCH_ANY {
+        RLC_ERROR(end);
+    }RLC_FINALLY {
+
+    }
+    code = RLC_OK;
+end:
+    return code;
+}
+
 int main(void)
 {
     printf("Starting tests...\n");
@@ -512,6 +529,8 @@ int main(void)
         core_clean();
         return 1;
     }
+
+    pc_param_print();
 
     if(test_hash() != 0) {
         return 1;

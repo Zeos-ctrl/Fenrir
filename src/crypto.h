@@ -1,20 +1,22 @@
-#ifdef CRYPTO_H
+#ifndef CRYPTO_H
 #define CRYPTO_H
 
 #include <relic/relic.h>
+#include <ascon/ascon.h>
 
 #define BUF_SIZE 4096
 
-struct key_pair /* Key pair struct */
+typedef struct key_pair /* Key pair struct */
 {
     g1_t public_key; /* Public key member of G1 */
-    g1_t private_key; /* Private key member of G1 */
-    g1_t public_peram; /* Public perameter member of G1 */
+    g1_t k1; /* Private key member of G1 */
+    g2_t k2; /* Private key member of G2 */
+    g1_t Q; /* Public perameter member of G1 */
     bn_t secret; /* Secret value member of Z */
-};
+} key_pair_t;
 
-void gen_key_pair(struct key_pair *child, char *child_id,
-        struct key_pair *parent, bn_t master);
+int gen_key_pair(key_pair_t *child, char *child_id,
+        key_pair_t *parent, bn_t master);
 
 int ascon_enc(uint8_t *buffer, size_t plaintext_len, char *plaintext, 
         uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN]);
@@ -26,6 +28,6 @@ int aes_enc(unsigned char *plaintext, int plaintext_len, unsigned char *key,
         unsigned char *iv, unsigned char *ciphertext);
 
 int aes_dec(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
-        unsigned char *iv, unsigned char *decryptedtext)
+        unsigned char *iv, unsigned char *decryptedtext);
 
 #endif // CRYPTO_H

@@ -1,3 +1,9 @@
+#ifndef PARAMS_H
+#define PARAMS_H
+
+#define GATEWAY_IP "192.168.1.126"
+#define GATEWAY_PORT 8080
+
 const char asciiArt[] = 
 " ________ _______   ________   ________  ___  ________     \n"
 "|\\  _____\\\\  ___ \\ |\\   ___  \\|\\   __  \\|\\  \\|\\   __  \\    \n"
@@ -7,3 +13,10 @@ const char asciiArt[] =
 "   \\ \\__\\   \\ \\_______\\ \\__\\\\ \\__\\ \\__\\\\ _\\\\ \\__\\ \\__\\\\ _\\\n"
 "    \\|__|    \\|_______|\\|__| \\|__|\\|__|\\|__|\\|__|\\|__|\\|__|";
 
+typedef enum {
+    ROOT = 1,
+    GATEWAY = 2,
+    NODE = 3,
+} DeviceType;
+
+#endif // !PARAMS_H

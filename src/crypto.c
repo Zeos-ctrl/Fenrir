@@ -9,18 +9,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../include/crypto.h"
+#include "crypto.h"
 
-struct key_pair /* Key pair struct */
-{
-    g1_t public_key; /* Public key member of G1 */
-    g1_t k1; /* Private key member of G1 */
-    g2_t k2; /* Private key member of G2 */
-    g1_t Q; /* Public perameter member of G1 */
-    bn_t secret; /* Secret value member of Z */
-};
-
-int gen_key_pair(struct key_pair *child, char *child_id, struct key_pair *parent, bn_t master)
+int gen_key_pair(key_pair_t *child, char *child_id, key_pair_t *parent, bn_t master)
 {
     int code = RLC_ERR;
     g1_t P; /* Unmapped Private key */
@@ -84,7 +75,7 @@ int gen_key_pair(struct key_pair *child, char *child_id, struct key_pair *parent
 }
 
 int ascon_enc(uint8_t *buffer, size_t plaintext_len, char *plaintext,
-        uint8_t *key, uint8_t *nonce)
+        uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
     ascon_aead_ctx_t ctx;
     ascon_aead128a_init(&ctx, key, nonce);
@@ -218,7 +209,7 @@ int aes_dec(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
     return plaintext_len;
 }
 
-int sok_gen_sym_key(struct key_pair *sender, char *receiver)
+int sok_gen_sym_key(key_pair_t *sender, char *receiver)
 {        
     int first = 0, code = RLC_ERR;
     size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);

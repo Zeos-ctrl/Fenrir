@@ -15,7 +15,7 @@ ASCON_INCLUDE = /usr/local/include
 ASCON_LIB = /usr/local/lib
 
 # Program source files
-SRC_MAIN = src/main.c
+SRC_MAIN = src/fenrir.c
 SRC_TEST = tests/test_crypto.c
 
 # Program executable name

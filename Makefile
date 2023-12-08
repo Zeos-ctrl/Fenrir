@@ -20,7 +20,7 @@ SRC_TEST = tests/test_crypto.c
 
 # Program executable name
 TARGET_MAIN = Fenrir
-TARGET_TEST = Test
+TARGET_TEST = Tests
 
 all: $(TARGET_MAIN) $(TARGET_TEST)
 

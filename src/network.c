@@ -1,33 +1,66 @@
-#include <openssl/ecdsa.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-// This function is used to send a message to the other node. It encrypts the 
-// message using the symmetric key and sends it to the other node.
-// Path: network.c
-// Parameters:
-//  char *message: The message to be sent 
-//  int message_len: The length of the message 
-//  struct key_pair *sender: The public, private key pair of the sending node
-void send_msg()
+#include "network.h"
+#include "params.h"
+#include "crypto.h"
+
+int serialize_k(char *buffer, size_t size, key_pair_t *key_pair)
 {
-    return;
+    if (size < sizeof(key_pair_t)) {
+        printf("Buffer too small to serialize key pair\n");
+        return -1;
+    }
+    memcpy(buffer, key_pair, sizeof(key_pair_t));
+    return 0;
 }
 
-// This function is used to receive a message from the other node. It decrypts 
-// the message using the symmetric key and returns the message. 
-// Path: network.c
-// Parameters:
-//   struct key_pair *receiver: The public key of the receiving node 
-void receive_msg()
+int deserialize_k(char *buffer, size_t size, key_pair_t *key_pair)
 {
-    return;
+    if (size < sizeof(key_pair_t)) {
+        printf("Buffer too small to deserialize key pair\n");
+        return -1;
+    }
+    memcpy(key_pair, buffer, sizeof(key_pair_t));
+    return 0;
 }
 
-// This function is used to connect to the other node using a websocket and 
-// generates a session key to be used for initial communication.
-// Path: network.c
-// Parameters:
-//  none
-void connnect_to_device_eccdh()
+int serialize_ascon(char *buffer, size_t size, ascon_packet_t *packet)
 {
-    return;
+    if (size < sizeof(ascon_packet_t)) {
+        printf("Buffer too small to serialize key pair\n");
+        return -1;
+    }
+    memcpy(buffer, packet, sizeof(ascon_packet_t));
+    return 0;
+}
+
+int deserialize_ascon(char *buffer, size_t size, ascon_packet_t *packet)
+{
+    if (size < sizeof(ascon_packet_t)) {
+        printf("Buffer too small to deserialize key pair\n");
+        return -1;
+    }
+    memcpy(packet, buffer, sizeof(ascon_packet_t));
+    return 0;
+}
+
+int serialize_aes(char *buffer, size_t size, aes_packet_t *packet)
+{
+    if (size < sizeof(aes_packet_t)) {
+        printf("Buffer too small to serialize key pair\n");
+        return -1;
+    }
+    memcpy(buffer, packet, sizeof(aes_packet_t));
+    return 0;
+}
+
+int deserialize_aes(char *buffer, size_t size, aes_packet_t *packet)
+{
+    if (size < sizeof(aes_packet_t)) {
+        printf("Buffer too small to deserialize key pair\n");
+        return -1;
+    }
+    memcpy(packet, buffer, sizeof(aes_packet_t));
+    return 0;
 }

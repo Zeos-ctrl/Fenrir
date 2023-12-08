@@ -12,6 +12,7 @@
 
 #include "setup.h"
 #include "crypto.h"
+#include "network.h"
 
 #define PORT 8080
 
@@ -113,6 +114,25 @@ int device_setup_gateway(key_pair_t *gateway, char *identity)
     printf("Request sent\n");
     valread = read(client_fd, buffer, 1024);
     printf("%s\n", buffer);
+    // Deserialize the buffer
+    deserialize_k(buffer, sizeof(buffer), gateway);
+
+    // Print the struct for debugging
+    printf("Gateway secret: ");
+    bn_print(gateway->secret);
+    printf("\n");
+    printf("Gateway public key: ");
+    g1_print(gateway->public_key);
+    printf("\n");
+    printf("Gateway k1: ");
+    g1_print(gateway->k1);
+    printf("\n");
+    printf("Gateway k2: ");
+    g2_print(gateway->k2);
+    printf("\n");
+    printf("Gateway Q: ");
+    g1_print(gateway->Q);
+    printf("\n");
 
     // Close connection 
     close(client_fd);
@@ -145,6 +165,25 @@ int device_setup_worker(key_pair_t *worker, char *identity)
     printf("Request sent\n");
     valread = read(client_fd, buffer, 1024);
     printf("%s\n", buffer);
+    // Deserialize the buffer
+    deserialize_k(buffer, sizeof(buffer), worker);
+
+    // Print the struct for debugging
+    printf("Worker secret: ");
+    bn_print(worker->secret);
+    printf("\n");
+    printf("Worker public key: ");
+    g1_print(worker->public_key);
+    printf("\n");
+    printf("Worker k1: ");
+    g1_print(worker->k1);
+    printf("\n");
+    printf("Worker k2: ");
+    g2_print(worker->k2);
+    printf("\n");
+    printf("Worker Q: ");
+    g1_print(worker->Q);
+    printf("\n");
 
     // Close connection 
     close(client_fd);

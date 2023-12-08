@@ -19,4 +19,9 @@ typedef enum {
     NODE = 3,
 } DeviceType;
 
+typedef enum {
+    AES = 1,
+    ASCON = 2,
+} Cypher;
+
 #endif // !PARAMS_H

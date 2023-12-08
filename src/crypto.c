@@ -74,8 +74,9 @@ int gen_key_pair(key_pair_t *child, char *child_id, key_pair_t *parent, bn_t mas
     return code;
 }
 
-int ascon_enc(uint8_t *buffer, size_t plaintext_len, char *plaintext,
-        uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN])
+int ascon_enc(uint8_t *buffer, uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN], 
+        size_t plaintext_len, char *plaintext, uint8_t key[ASCON_AEAD128_KEY_LEN],
+        uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
     ascon_aead_ctx_t ctx;
     ascon_aead128a_init(&ctx, key, nonce);
@@ -86,14 +87,11 @@ int ascon_enc(uint8_t *buffer, size_t plaintext_len, char *plaintext,
             &ctx, buffer + ciphertext_len,
             (uint8_t*) plaintext, strlen(plaintext));
 
-    uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN];
-
     ciphertext_len += ascon_aead128_encrypt_final(
             &ctx, buffer + ciphertext_len,
             tag, sizeof(tag));
 
     printf("Ciphertext: %s\n", buffer);
-    printf("Tag: %s\n", tag);
 
     /* Clean up */
     ascon_aead_cleanup(&ctx);
@@ -209,11 +207,10 @@ int aes_dec(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
     return plaintext_len;
 }
 
-int sok_gen_sym_key(key_pair_t *sender, char *receiver)
+int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver)
 {        
     int first = 0, code = RLC_ERR;
     size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);
-    uint8_t *buf;
     uint8_t *key;
     g1_t p;
     g2_t q;

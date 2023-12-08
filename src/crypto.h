@@ -18,8 +18,9 @@ typedef struct key_pair /* Key pair struct */
 int gen_key_pair(key_pair_t *child, char *child_id,
         key_pair_t *parent, bn_t master);
 
-int ascon_enc(uint8_t *buffer, size_t plaintext_len, char *plaintext, 
-        uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN]);
+int ascon_enc(uint8_t *buffer, uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN], 
+        size_t plaintext_len, char *plaintext, uint8_t key[ASCON_AEAD128_KEY_LEN],
+        uint8_t nonce[ASCON_AEAD_NONCE_LEN]);
 
 int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
         uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN]);
@@ -29,5 +30,7 @@ int aes_enc(unsigned char *plaintext, int plaintext_len, unsigned char *key,
 
 int aes_dec(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
         unsigned char *iv, unsigned char *decryptedtext);
+
+int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver);
 
 #endif // CRYPTO_H

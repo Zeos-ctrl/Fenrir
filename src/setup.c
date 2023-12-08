@@ -16,8 +16,13 @@
 
 #define PORT 8080
 
-int device_setup_root(key_pair_t *root, char *identity)
+int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
 {
+    if (id_len < 0 ) {
+        printf("Identity must be larger than 0 bytes\n");
+        return -1;
+    }
+
     int code = RLC_ERR;
     bn_t N; /* Master secret and order of group */
 
@@ -89,8 +94,13 @@ int device_setup_root(key_pair_t *root, char *identity)
     return code;
 }
 
-int device_setup_gateway(key_pair_t *gateway, char *identity)
+int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
 {
+    if (id_len < 0 ) {
+        printf("Identity must be larger than 0 bytes\n");
+        return -1;
+    }
+
     int status, valread, client_fd;
     struct sockaddr_in serv_addr;
     char buffer[1024] = {0};
@@ -140,8 +150,13 @@ int device_setup_gateway(key_pair_t *gateway, char *identity)
     return 0;
 }
 
-int device_setup_worker(key_pair_t *worker, char *identity)
+int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
 {
+    if (id_len < 0 ) {
+        printf("Identity must be larger than 0 bytes\n");
+        return -1;
+    }
+
     int status, valread, client_fd;
     struct sockaddr_in serv_addr;
     char buffer[1024] = {0};

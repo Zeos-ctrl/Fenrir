@@ -11,8 +11,14 @@
 
 #include "crypto.h"
 
-int gen_key_pair(key_pair_t *child, char *child_id, key_pair_t *parent, bn_t master)
+int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len, 
+        key_pair_t *parent, bn_t master)
 {
+    if (id_len < 0 ) {
+        printf("Identity must be larger than 0 bytes\n");
+        return -1;
+    }
+
     int code = RLC_ERR;
     g1_t P; /* Unmapped Private key */
     bn_t N; /* Order of the group */
@@ -74,9 +80,9 @@ int gen_key_pair(key_pair_t *child, char *child_id, key_pair_t *parent, bn_t mas
     return code;
 }
 
-int ascon_enc(uint8_t *buffer, uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN], 
-        size_t plaintext_len, char *plaintext, uint8_t key[ASCON_AEAD128_KEY_LEN],
-        uint8_t nonce[ASCON_AEAD_NONCE_LEN])
+int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
+        uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN],
+        uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
     ascon_aead_ctx_t ctx;
     ascon_aead128a_init(&ctx, key, nonce);
@@ -95,7 +101,7 @@ int ascon_enc(uint8_t *buffer, uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN],
 
     /* Clean up */
     ascon_aead_cleanup(&ctx);
-    return 0;
+    return ciphertext_len;
 }
 
 int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
@@ -118,11 +124,11 @@ int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
     buffer[plaintext_len] = '\0'; // Null terminated, because it's text
     ascon_aead_cleanup(&ctx);
 
-    return 0;
+    return plaintext_len;
 }
 
-int aes_enc(unsigned char *plaintext, int plaintext_len, unsigned char *key,
-        unsigned char *iv, unsigned char *ciphertext)
+int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_len,
+        unsigned char *key, unsigned char *iv)
 {
     EVP_CIPHER_CTX *ctx;
     int len;
@@ -159,8 +165,8 @@ int aes_enc(unsigned char *plaintext, int plaintext_len, unsigned char *key,
     return ciphertext_len;
 }
 
-int aes_dec(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
-        unsigned char *iv, unsigned char *decryptedtext)
+int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphertext_len,
+        unsigned char *key, unsigned char *iv)
 {
     EVP_CIPHER_CTX *ctx;
     int len;
@@ -207,7 +213,7 @@ int aes_dec(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
     return plaintext_len;
 }
 
-int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver)
+int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_len)
 {        
     int first = 0, code = RLC_ERR;
     size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);

@@ -11,7 +11,7 @@
 
 #include "crypto.h"
 
-int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len, 
+int bilinear_key_pair(key_pair_t *child, char child_id[128], size_t id_len, 
         key_pair_t *parent, bn_t master)
 {
     if (id_len < 0 ) {
@@ -95,7 +95,7 @@ int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
 
     ciphertext_len += ascon_aead128_encrypt_final(
             &ctx, buffer + ciphertext_len,
-            tag, sizeof(tag));
+            tag, sizeof(*tag));
 
     printf("Ciphertext: %s\n", buffer);
 
@@ -128,7 +128,7 @@ int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
 }
 
 int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_len,
-        unsigned char *key, unsigned char *iv)
+        unsigned char *key, unsigned char iv[16], size_t iv_len)
 {
     EVP_CIPHER_CTX *ctx;
     int len;
@@ -166,7 +166,7 @@ int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_l
 }
 
 int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphertext_len,
-        unsigned char *key, unsigned char *iv)
+        unsigned char *key, unsigned char iv[16], size_t iv_len)
 {
     EVP_CIPHER_CTX *ctx;
     int len;

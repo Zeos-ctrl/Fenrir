@@ -101,7 +101,7 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
         return -1;
     }
 
-    int status, valread, client_fd;
+    int status, client_fd;
     struct sockaddr_in serv_addr;
     char buffer[1024] = {0};
     // Connect to root node
@@ -114,6 +114,12 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
         return -1;
     }
 
+    client_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_fd < 0) {
+        printf("\nSocket creation error \n");
+        return -1;
+    }
+
     if ((status = connect(client_fd, (struct sockaddr*)&serv_addr,
                     sizeof(serv_addr))) < 0) {
         printf("\nConnection Failed \n");
@@ -122,7 +128,7 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
     // Send request
     send(client_fd, identity, strlen(identity), 0);
     printf("Request sent\n");
-    valread = read(client_fd, buffer, 1024);
+    read(client_fd, buffer, 1024);
     printf("%s\n", buffer);
     // Deserialize the buffer
     deserialize_k(buffer, sizeof(buffer), gateway);
@@ -157,7 +163,7 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
         return -1;
     }
 
-    int status, valread, client_fd;
+    int status, client_fd;
     struct sockaddr_in serv_addr;
     char buffer[1024] = {0};
     // Connect to gateway/ KDC
@@ -170,6 +176,12 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
         return -1;
     }
 
+    client_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_fd < 0) {
+        printf("\nSocket creation error \n");
+        return -1;
+    }
+
     if ((status = connect(client_fd, (struct sockaddr*)&serv_addr,
                     sizeof(serv_addr))) < 0) {
         printf("\nConnection Failed \n");
@@ -178,7 +190,7 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
     // Send request
     send(client_fd, identity, strlen(identity), 0);
     printf("Request sent\n");
-    valread = read(client_fd, buffer, 1024);
+    read(client_fd, buffer, 1024);
     printf("%s\n", buffer);
     // Deserialize the buffer
     deserialize_k(buffer, sizeof(buffer), worker);

@@ -25,7 +25,7 @@ typedef struct key_pair /* Key pair struct */
  * @param[in] bn_t master - The master secret value
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int bilinear_key_pair(key_pair_t *child, char *child_id, size_t child_id_len,
+int bilinear_key_pair(key_pair_t *child, char child_id[128], size_t child_id_len,
         key_pair_t *parent, bn_t master);
 /**
  * Encrypts a message using the ascon cipher 
@@ -64,7 +64,7 @@ int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
  * @return int - The length of the ciphertext
  */
 int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_len,
-        unsigned char *key, unsigned char *iv);
+        unsigned char *key, unsigned char iv[16], size_t iv_len);
 /** 
  * Decrypts a message using the AES cipher 
  *
@@ -73,10 +73,11 @@ int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_l
  * @param[in] int ciphertext_len - The length of the ciphertext 
  * @param[in] unsigned char *key - The key to be used for decryption 
  * @param[in] unsigned char *iv - The initialization vector to be used for decryption
+ * @param[in] size_t iv_len - The length of the initialization vector
  * @return int - The length of the decrypted text
  */
 int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphertext_len,
-        unsigned char *key, unsigned char *iv);
+        unsigned char *key, unsigned char iv[16], size_t iv_len);
 /**
  * Generates a symmetric key for a given sender and receiver 
  * using sakai-kasahara non-interactive key exchange 

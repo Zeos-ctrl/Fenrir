@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
         if (packet.type == 0 ) {
             key_pair_t child;
             if (bilinear_key_pair(&child, packet.identity, 
-                        sizeof(packet.identity), &root, &root.secret) != RLC_OK) {
+                        sizeof(packet.identity), &root, (bn_st *)&root.secret) != RLC_OK) {
                 printf("Failed to generate key pair exiting!\n");
                 goto exit;
             }
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
             printf("Generating key pair...\n");
             key_pair_t child;
             bilinear_key_pair(&child, reqbuffer, sizeof(reqbuffer),
-                    &gateway, &gateway.secret);
+                    &gateway, (bn_st *)&gateway.secret);
             serialize_k(reqbuffer, sizeof(reqbuffer), &child);
             send(new_socket, reqbuffer, sizeof(reqbuffer), 0);
             printf("Key pair sent\n");
@@ -173,13 +173,12 @@ int main(int argc, char *argv[])
             if (CYPHER == AES) {
                 printf("Decrypting AES...\n");
                 aes_packet_t packet;
-                char *buffer;
                 unsigned char *key;
                 unsigned char plaintext[1024];
 
                 deserialize_aes(reqbuffer, readreq, &packet);
                 sok_gen_sym_key(key, &gateway, packet.identity, sizeof(packet.identity));
-                aes_dec(plaintext, packet.payload, sizeof(packet.payload), key, &packet.iv);
+                aes_dec(plaintext, (unsigned char*)packet.payload, sizeof(packet.payload), key, packet.iv, sizeof(packet.iv));
                 printf("AES decrypted\n");
                 printf("Msg: %s\n", plaintext);
             } else if (CYPHER == ASCON) {
@@ -190,7 +189,7 @@ int main(int argc, char *argv[])
 
                 deserialize_ascon(reqbuffer, readreq, &packet);
                 sok_gen_sym_key(key, &gateway, packet.identity, sizeof(packet.identity));
-                ascon_dec(plaintext, sizeof(packet.payload), packet.tag, key, packet.nonce);
+                ascon_dec((unsigned char*)plaintext, sizeof(packet.payload), packet.tag, key, packet.nonce);
                 printf("ASCON decrypted\n");
                 printf("Msg: %s\n", plaintext);
             } else {
@@ -211,9 +210,8 @@ int main(int argc, char *argv[])
     } else if (DEVICE_TYPE == NODE) {
         printf("Setting up worker...\n");
         key_pair_t node;
-        int status, valread, client_fd;
+        int status, client_fd;
         struct sockaddr_in serv_addr;
-        char buffer[1024] = {0};
         char *identity = "node"; /* Identity */
         if (device_setup_worker(&node, identity, strlen(identity)) != RLC_OK) {
             printf("Failed to setup worker exiting!\n");
@@ -237,12 +235,12 @@ int main(int argc, char *argv[])
             printf("Encrypting AES...\n");
             aes_packet_t packet;
             unsigned char *key;
-            unsigned char *iv = "1234567890123456";
+            char *iv = "1234567890123456";
             unsigned char ciphertext[1024];
             char *buffer;
 
             sok_gen_sym_key(key, &node, gateway, strlen(gateway));
-            aes_enc(ciphertext, request, strlen(request), key, iv);
+            aes_enc(ciphertext, (unsigned char*)request, strlen(request), key, (unsigned char*)iv, strlen(iv));
             serialize_aes(buffer, sizeof(buffer), &packet);
             send(client_fd, buffer, sizeof(buffer), 0);
 
@@ -255,7 +253,7 @@ int main(int argc, char *argv[])
             char *buffer;
 
             sok_gen_sym_key(key, &node, gateway, strlen(gateway));
-            ascon_enc(buffer, request, strlen(request), tag,  key, nonce);
+            ascon_enc((unsigned char*)buffer, request, strlen(request), tag,  key, nonce);
             serialize_ascon(buffer, sizeof(buffer), &packet);
             send(client_fd, buffer, sizeof(buffer), 0);
 

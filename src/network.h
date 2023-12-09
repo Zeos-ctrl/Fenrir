@@ -24,17 +24,17 @@
 /* The ascon packet structure */
 typedef struct {
     uint8_t type; /* The type of operation, 0 - gen key, 1 - decrypt message */
-    char *identity[128]; /* The identity of the sender */ 
-    uint16_t nonce[ASCON_AEAD_NONCE_LEN]; /* The nonce */
-    uint16_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN]; /* The tag to verify the enc */
+    char identity[128]; /* The identity of the sender */ 
+    unsigned char nonce[ASCON_AEAD_NONCE_LEN]; /* The nonce */
+    unsigned char tag[ASCON_AEAD_TAG_MIN_SECURE_LEN]; /* The tag to verify the enc */
     char *payload; /* The encrypted payload */
 } ascon_packet_t;
 
 /* The aes packet structure */
 typedef struct {
     uint8_t type; /* The type of operation, 0 - gen key, 1 - decrypt message */ 
-    char *identity[128]; /* The identity of the sender */
-    uint16_t iv; /* The iv */
+    char identity[128]; /* The identity of the sender */
+    uint8_t iv[16]; /* The iv */
     char *payload; /* The encrypted payload */
 } aes_packet_t;
 

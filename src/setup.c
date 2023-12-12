@@ -13,8 +13,8 @@
 #include "setup.h"
 #include "crypto.h"
 #include "network.h"
+#include "params.h"
 
-#define PORT 8080
 
 int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
 {
@@ -106,7 +106,7 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
     char buffer[1024] = {0};
     // Connect to root node
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_port = htons(ROOT_PORT);
 
     // Convert IPv4 and IPv6 addresses from text to binary form
     if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0 ) {
@@ -125,15 +125,21 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
         printf("\nConnection Failed \n");
         return -1;
     }
+    // Construct a packet to send 
+    aes_packet_t packet;
+    packet.type = 0;
+    memcpy(packet.identity, identity, id_len);
     // Send request
-    send(client_fd, identity, strlen(identity), 0);
+    char buf[1024] = {0};
+    serialize_aes(buf, sizeof(buf), &packet);
+    send(client_fd, buf, sizeof(buf), 0);
     printf("Request sent\n");
     read(client_fd, buffer, 1024);
-    printf("%s\n", buffer);
     // Deserialize the buffer
     deserialize_k(buffer, sizeof(buffer), gateway);
 
     // Print the struct for debugging
+    printf("Received Key Pairing:\n");
     printf("Gateway secret: ");
     bn_print(gateway->secret);
     printf("\n");
@@ -168,7 +174,7 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
     char buffer[1024] = {0};
     // Connect to gateway/ KDC
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_port = htons(GATEWAY_PORT);
 
     // Convert IPv4 and IPv6 addresses from text to binary form
     if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0 ) {
@@ -187,15 +193,21 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
         printf("\nConnection Failed \n");
         return -1;
     }
+    // Construct a packet to send 
+    aes_packet_t packet;
+    packet.type = 0;
+    memcpy(packet.identity, identity, id_len);
     // Send request
-    send(client_fd, identity, strlen(identity), 0);
+    char buf[1024] = {0};
+    serialize_aes(buf, sizeof(buf), &packet);
+    send(client_fd, buf, sizeof(buf), 0);
     printf("Request sent\n");
     read(client_fd, buffer, 1024);
-    printf("%s\n", buffer);
     // Deserialize the buffer
     deserialize_k(buffer, sizeof(buffer), worker);
 
     // Print the struct for debugging
+    printf("Received Key Pairing:\n");
     printf("Worker secret: ");
     bn_print(worker->secret);
     printf("\n");

@@ -82,7 +82,7 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
  * Generates a symmetric key for a given sender and receiver 
  * using sakai-kasahara non-interactive key exchange 
  *
- * @param[out] uint8_t *buf - The buffer to store the symmetric key 
+ * @param[out] uint8_t *key - The buffer to store the symmetric key 
  * @param[in] key_pair_t *sender - The key pair of the sender 
  * @param[in] char *receiver - The id of the receiver
  * @param[in] size_t id_len - The length of the id

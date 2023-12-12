@@ -86,7 +86,7 @@ int deserialize_ascon(char *buffer, size_t size, ascon_packet_t *packet);
  * @param[in] packet - The packet to serialize
  * @return 0 on success, -1 on failure
  */
-int serialize_aes(char *buffer, size_t size, aes_packet_t *packet);
+int serialize_aes(uint8_t *buffer, size_t size, aes_packet_t *packet);
 
 /**
  * Deserializes the aes packet from a buffer

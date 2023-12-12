@@ -213,11 +213,11 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
     return plaintext_len;
 }
 
-int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_len)
+int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_len)
 {        
     int first = 0, code = RLC_ERR;
     size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);
-    uint8_t *key;
+    uint8_t *buf;
     g1_t p;
     g2_t q;
     gt_t e;
@@ -228,8 +228,8 @@ int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_
         gt_new(e);
 
         size = gt_size_bin(e, 0);
-        buf = RLC_ALLOCA(uint8_t, size);
-        if (buf == NULL) {
+        key = RLC_ALLOCA(uint8_t, size);
+        if (key == NULL) {
             RLC_THROW(ERR_NO_MEMORY);
         }
 
@@ -264,16 +264,17 @@ int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_
         }
 
         printf("Writing key to buffer...\n");
-        key = RLC_ALLOCA(uint8_t, 128);
-        gt_write_bin(buf, size, e, 0);
-        md_kdf(key, 128, buf, size);
+        buf = RLC_ALLOCA(uint8_t, 128);
+        gt_write_bin(key, size, e, 0);
+        md_kdf(buf, 128, key, size);
 
         /* Print the key */ 
         printf("\nKey: ");
         for (int i = 0; i < 16; i++) {
-            printf("%02x", key[i]);
+            printf("%02x", buf[i]);
         }
         printf("\n");
+        memcpy(buf, key, sizeof(&buf));
 
     } RLC_CATCH_ANY {
         RLC_THROW(ERR_CAUGHT);

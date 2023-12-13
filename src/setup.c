@@ -103,7 +103,7 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
 
     int status, client_fd;
     struct sockaddr_in serv_addr;
-    char buffer[1024] = {0};
+    uint8_t buffer[sizeof(key_pair_t)] = {0};
     // Connect to root node
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(ROOT_PORT);
@@ -129,12 +129,17 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
     aes_packet_t packet;
     packet.type = 0;
     memcpy(packet.identity, identity, id_len);
+    packet.identity[id_len] = '\0';
+    packet.iv[0] = '\0';
+    packet.payload_length = 0;
+    packet.payload[0] = '\0';
+
     // Send request
-    char buf[1024] = {0};
+    uint8_t buf[1024] = {0};
     serialize_aes(buf, sizeof(buf), &packet);
     send(client_fd, buf, sizeof(buf), 0);
     printf("Request sent\n");
-    read(client_fd, buffer, 1024);
+    read(client_fd, buffer, sizeof(buffer));
     // Deserialize the buffer
     deserialize_k(buffer, sizeof(buffer), gateway);
 
@@ -171,7 +176,7 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
 
     int status, client_fd;
     struct sockaddr_in serv_addr;
-    char buffer[1024] = {0};
+    uint8_t buffer[sizeof(key_pair_t)] = {0};
     // Connect to gateway/ KDC
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(GATEWAY_PORT);
@@ -198,11 +203,11 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
     packet.type = 0;
     memcpy(packet.identity, identity, id_len);
     // Send request
-    char buf[1024] = {0};
+    uint8_t buf[1024] = {0};
     serialize_aes(buf, sizeof(buf), &packet);
     send(client_fd, buf, sizeof(buf), 0);
     printf("Request sent\n");
-    read(client_fd, buffer, 1024);
+    read(client_fd, buffer, sizeof(buffer));
     // Deserialize the buffer
     deserialize_k(buffer, sizeof(buffer), worker);
 

@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in address;
     int opt = 1;
     socklen_t addrlen = sizeof(address);
-    char reqbuffer[1024] = { 0 };
+    uint8_t reqbuffer[1024] = { 0 };
 
     printf("Fenrir starting...\n");
     if (core_init() != RLC_OK) {
@@ -175,11 +175,19 @@ int main(int argc, char *argv[])
                     printf("Decrypting AES...\n");
                     aes_packet_t packet;
                     uint8_t *key;
-                    unsigned char plaintext[1024];
+                    key = RLC_ALLOCA(uint8_t, 128);
 
                     deserialize_aes(reqbuffer, sizeof(packet), &packet);
                     sok_gen_sym_key(key, &gateway, packet.identity, sizeof(packet.identity));
+                    printf("\nKey: ");
+                    for (int i = 0; i < 16; i++) {
+                        printf("%02x", key[i]);
+                    }
+                    printf("\n");
+
+                    unsigned char *plaintext = malloc(sizeof(packet.payload));
                     aes_dec(plaintext, (unsigned char*)packet.payload, sizeof(packet.payload), key, packet.iv, sizeof(packet.iv));
+
                     printf("AES decrypted\n");
                     printf("Msg: %s\n", plaintext);
                 } else if (CYPHER == ASCON) {
@@ -254,14 +262,21 @@ int main(int argc, char *argv[])
             printf("\n");
             aes_enc(ciphertext, (unsigned char*)identity, strlen(identity), key, (unsigned char*)iv, sizeof(iv));
             uint8_t buffer[sizeof(aes_packet_t)];
+
             // Construct the packet 
             printf("Constructing packet...\n");
-            aes_packet_t packet = {1, *identity, *iv, *ciphertext};
+            aes_packet_t packet;
+            packet.type = 1;
+            memcpy(packet.identity, identity, strlen(identity));
+            memcpy(packet.iv, iv, sizeof(iv));
+            packet.payload_length = strlen((char *)ciphertext);
+            packet.payload = strdup((char *)ciphertext);
+            packet.payload[strlen(packet.payload)] = '\0';
 
-            printf("Packet size: %lu\n", sizeof(packet));
             serialize_aes(buffer, sizeof(buffer), &packet);
             printf("Sending request to gateway...\n");
             send(client_fd, buffer, sizeof(buffer), 0);
+            free(packet.payload);
 
         } else if (CYPHER == ASCON) {
             printf("Encrypting ASCON...\n");

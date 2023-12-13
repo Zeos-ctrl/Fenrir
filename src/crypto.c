@@ -11,7 +11,7 @@
 
 #include "crypto.h"
 
-int bilinear_key_pair(key_pair_t *child, char child_id[128], size_t id_len, 
+int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len, 
         key_pair_t *parent, bn_t master)
 {
     if (id_len < 0 ) {
@@ -172,18 +172,20 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
     int len;
     int plaintext_len;
 
+    printf("Decrypting...\n");
     /* Create and initialise the context */ 
     if(!(ctx = EVP_CIPHER_CTX_new())) {
         printf("Error creating context\n");
         return 1;
     }
+    printf("Context created\n");
 
     /* Initialise the decryption operation. */ 
     if(1 != EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv)) {
         printf("Error initialising decryption\n");
         return 1;
     }
-
+    printf("Decryption initialised\n");
     /* Provide the message to be decrypted, and obtain the plaintext output.
      * EVP_DecryptUpdate can be called multiple times if necessary
      */ 
@@ -191,6 +193,7 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
         printf("Error decrypting\n");
         return 1;
     } 
+    printf("Decryption updated\n");
     plaintext_len = len;
 
     /* Finalise the decryption. Further plaintext bytes may be written at
@@ -200,6 +203,7 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
         printf("Error finalising\n");
         return 1;
     }
+    printf("Decryption finalised\n");
     plaintext_len += len;
 
     /* Clean up */ 
@@ -268,13 +272,14 @@ int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_
         gt_write_bin(key, size, e, 0);
         md_kdf(buf, 128, key, size);
 
+        memcpy(key, buf, sizeof(&key));
+
         /* Print the key */ 
         printf("\nKey: ");
         for (int i = 0; i < 16; i++) {
-            printf("%02x", buf[i]);
+            printf("%02x", key[i]);
         }
         printf("\n");
-        memcpy(buf, key, sizeof(&buf));
 
     } RLC_CATCH_ANY {
         RLC_THROW(ERR_CAUGHT);

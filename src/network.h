@@ -27,6 +27,7 @@ typedef struct {
     char identity[128]; /* The identity of the sender */ 
     unsigned char nonce[ASCON_AEAD_NONCE_LEN]; /* The nonce */
     unsigned char tag[ASCON_AEAD_TAG_MIN_SECURE_LEN]; /* The tag to verify the enc */
+    size_t payload_length; /* The length of the payload */
     char *payload; /* The encrypted payload */
 } ascon_packet_t;
 
@@ -35,6 +36,7 @@ typedef struct {
     uint8_t type; /* The type of operation, 0 - gen key, 1 - decrypt message */ 
     char identity[128]; /* The identity of the sender */
     uint8_t iv[16]; /* The iv */
+    size_t payload_length; /* The length of the payload */
     char *payload; /* The encrypted payload */
 } aes_packet_t;
 
@@ -46,7 +48,7 @@ typedef struct {
  * @param[in] key_pair - The key pair to serialize
  * @return 0 on success, -1 on failure
  */
-int serialize_k(char *buffer, size_t size, key_pair_t *key_pair);
+int serialize_k(uint8_t *buffer, size_t size, key_pair_t *key_pair);
 
 /**
  * Deserializes the key pair from a buffer
@@ -56,7 +58,7 @@ int serialize_k(char *buffer, size_t size, key_pair_t *key_pair);
  * @param[out] key_pair - The key pair to deserialize into
  * @return 0 on success, -1 on failure
  */
-int deserialize_k(char *buffer, size_t size, key_pair_t *key_pair);
+int deserialize_k(uint8_t *buffer, size_t size, key_pair_t *key_pair);
 
 /**
  * Serializes the ascon packet into a buffer
@@ -96,6 +98,6 @@ int serialize_aes(uint8_t *buffer, size_t size, aes_packet_t *packet);
  * @param[out] packet - The packet to deserialize into
  * @return 0 on success, -1 on failure
  */
-int deserialize_aes(char *buffer, size_t size, aes_packet_t *packet);
+int deserialize_aes(uint8_t *buffer, size_t size, aes_packet_t *packet);
 
 #endif // NETWORK_H

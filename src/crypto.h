@@ -25,7 +25,7 @@ typedef struct key_pair /* Key pair struct */
  * @param[in] bn_t master - The master secret value
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int bilinear_key_pair(key_pair_t *child, char child_id[128], size_t child_id_len,
+int bilinear_key_pair(key_pair_t *child, char *child_id, size_t child_id_len,
         key_pair_t *parent, bn_t master);
 /**
  * Encrypts a message using the ascon cipher 

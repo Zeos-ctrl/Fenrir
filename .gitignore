@@ -36,7 +36,10 @@
 *.x86_64
 *.hex
 Fenrir
-Test
+Tests
+root
+gateway
+node
 
 # Debug files
 *.dSYM/

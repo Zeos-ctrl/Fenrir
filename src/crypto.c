@@ -11,68 +11,69 @@
 
 #include "crypto.h"
 
-int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len, 
-        key_pair_t *parent, bn_t master)
+int domain_key_generation(key_pair_t *c, char *id, size_t id_len,
+        key_pair_t *p, bn_t ds)
 {
     if (id_len < 0 ) {
         printf("Identity must be larger than 0 bytes\n");
         return -1;
     }
-
     int code = RLC_ERR;
-    g1_t P; /* Unmapped Private key */
-    bn_t N; /* Order of the group */
+    g1_t P; /* Unmapped Pub key */ 
+    bn_t N; /* Order of the Group */
     unsigned int md_len; /* Hash length */
     EVP_MD_CTX *mdctx; /* Hashing context */
     unsigned char hash[EVP_MAX_MD_SIZE]; /* Hash value */
 
     RLC_TRY {
         g1_null(P);
-        g1_null(child->public_key);
-        g1_null(child->k1);
-        g2_null(child->k2);
-        g1_null(child->Q);
-        bn_null(child->secret);
-        bn_null(child->cluster_secret);
-        bn_null(N);
+        g1_null(c->public_key);
+        g1_null(c->d1->k1);
+        g1_null(c->d2->k1);
+        g2_null(c->d1->k2);
+        g2_null(c->d2->k2);
+        g1_null(c->Q);
+        bn_null(c->d1->secret);
+        bn_null(c->d2->secret);
 
-        /* Set the childs secret number for generating the shared key with 
-         * cluser head to the parents secret number */
-        bn_copy(child->secret, master);
-
-        /* Gen new secret number for the child to become a cluster head if 
-         * needed */
+        /* Copys the domain secret of the parent to d1, then generate a new 
+         * secret for d2 */ 
+        bn_copy(c->d1->secret, ds);
         bn_new(N);
-        pc_get_ord(N); /* Get the order of the group G1 */
-        bn_rand_mod(child->cluster_secret, N); /* Gen random number in Zq */
+        pc_get_ord(N); 
+        bn_rand_mod(c->d2->secret, N);
 
-        /* Hash Identity to gen pub key */
-
+        /* Hash the identity to gen the public key */ 
         mdctx = EVP_MD_CTX_new(); /* Initialize ctx */ 
-        const EVP_MD *EVP_sha3_256() /* Get the sha3 hash function */;
+        const EVP_MD *EVP_sha3_256(); /* Get the sha3 hash function */
+        EVP_DigestInit_ex(mdctx, EVP_sha3_256(), NULL); /* Initialize the hash function */ 
+        EVP_DigestUpdate(mdctx, id, strlen(id)); /* Hash the node ID */ 
+        EVP_DigestFinal_ex(mdctx, hash, &md_len); /* Finalize the hash function */ 
+        
+        /* Map the public key to G1 */ 
+        g1_map(c->public_key, hash, sizeof(hash));
 
-        EVP_DigestInit_ex(mdctx, EVP_sha3_256(), NULL); /* Initialize the hash function */
-        EVP_DigestUpdate(mdctx, child_id, strlen(child_id)); /* Hash the node ID */
-        EVP_DigestFinal_ex(mdctx, hash, &md_len); /* Finalize the hash function */
+        /* Gen private key for d1 */ 
+        g1_t temp; 
+        g1_null(temp); 
+        g1_mul(temp, c->public_key, ds); /* temp = Pk * x */ 
+        g1_add(P, p->d2->k1, temp); /* PkC = PkP + temp */
+        g1_free(temp); 
 
-        g1_map(child->public_key, hash, sizeof(hash)); /* Map public key to G1 */
+        /* Map private key to groups */ 
+        g1_map(c->d1->k1, (uint8_t *)P, sizeof(P)); 
+        g1_mul(c->d1->k1, c->d1->k1, ds); 
+        g2_map(c->d1->k2, (uint8_t *)P, sizeof(P)); 
+        g2_mul(c->d1->k2, c->d1->k2, ds); 
 
-        /* Gen private key */ 
-        g1_t temp;
-        g1_null(temp);
-
-        g1_mul(temp, child->public_key, master); /* temp = Pk * x */
-        g1_add(P, parent->k1, temp); /* PkC = PkP + temp */
-        g1_free(temp);
-
-        /* Map private key to groups */
-        g1_map(child->k1, (uint8_t *)P, sizeof(P));
-        g1_mul(child->k1, child->k1, master);
-        g2_map(child->k2, (uint8_t *)P, sizeof(P));
-        g2_mul(child->k2, child->k2, master);
+        /* Map the same values to d2 using the generated secret */ 
+        g1_map(c->d2->k1, (uint8_t *)P, sizeof(P)); 
+        g1_mul(c->d2->k1, c->d2->k1, c->d2->secret); 
+        g2_map(c->d2->k2, (uint8_t *)P, sizeof(P)); 
+        g2_mul(c->d2->k2, c->d2->k2, c->d2->secret);
 
         /* Gen public perameter */ 
-        g1_mul(child->Q, parent->Q, master); /* Qx = Qx * x */
+        g1_mul(c->Q, p->Q, ds); /* Qx = Qx * x */
 
     } RLC_CATCH_ANY {
         RLC_THROW(ERR_CAUGHT);
@@ -223,7 +224,7 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
     return plaintext_len;
 }
 
-int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_len)
+int sok_key_d1(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_len)
 {        
     int first = 0, code = RLC_ERR;
     size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);
@@ -262,14 +263,92 @@ int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_
         printf("Generating shared value...\n");
         if (pc_map_is_type1()) {
             g2_map(q, (uint8_t *)receiver, len2);
-            pc_map(e, sender->k1, q);
+            pc_map(e, sender->d1->k1, q);
         } else {
             if (first == 1) {
                 g2_map(q, (uint8_t *)receiver, len2);
-                pc_map(e, sender->k1, q);
+                pc_map(e, sender->d1->k1, q);
             } else {
                 g1_map(p, (uint8_t *)receiver, len2);
-                pc_map(e, p, sender->k2);
+                pc_map(e, p, sender->d1->k2);
+            }
+        }
+
+        printf("Writing key to buffer...\n");
+        buf = RLC_ALLOCA(uint8_t, 128);
+        gt_write_bin(key, size, e, 0);
+        md_kdf(buf, 128, key, size);
+
+        memcpy(key, buf, sizeof(&key));
+
+        /* Print the key */ 
+        printf("\nKey: ");
+        for (int i = 0; i < 16; i++) {
+            printf("%02x", key[i]);
+        }
+        printf("\n");
+
+    } RLC_CATCH_ANY {
+        RLC_THROW(ERR_CAUGHT);
+    } RLC_FINALLY {
+        g1_free(p);
+        g2_free(q);
+        gt_free(e);
+        RLC_FREE(buf);
+        RLC_FREE(key);
+    }
+    code = RLC_OK;
+ 
+    return code;
+}
+
+int sok_key_d2(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_len)
+{        
+    int first = 0, code = RLC_ERR;
+    size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);
+    uint8_t *buf;
+    g1_t p;
+    g2_t q;
+    gt_t e;
+
+    RLC_TRY {
+        g1_new(p);
+        g2_new(q);
+        gt_new(e);
+
+        size = gt_size_bin(e, 0);
+        key = RLC_ALLOCA(uint8_t, size);
+        if (key == NULL) {
+            RLC_THROW(ERR_NO_MEMORY);
+        }
+
+        printf("Math...\n");
+        if (len1 == len2) {
+            if (strncmp((char *)sender->public_key, receiver, len1) == 0) {
+                RLC_THROW(ERR_NO_VALID);
+            }
+            first = (strncmp((char *)sender->public_key, receiver, len1) < 0 ? 1 : 2);
+        } else {
+            if (len1 < len2) {
+                if (strncmp((char *)sender->public_key, receiver, len2) == 0) {
+                    first = 2;
+                } else {
+                    first = (strncmp((char *)sender->public_key, receiver, len2) < 0 ? 1 : 2);
+                }
+            }
+        }
+        
+        printf("Generating shared value...\n");
+        if (pc_map_is_type1()) {
+            g2_map(q, (uint8_t *)receiver, len2);
+            pc_map(e, sender->d2->k1, q);
+        } else {
+            if (first == 1) {
+                g2_map(q, (uint8_t *)receiver, len2);
+                pc_map(e, sender->d2->k1, q);
+            } else {
+                g1_map(p, (uint8_t *)receiver, len2);
+                pc_map(e, p, sender->d2->k2);
             }
         }
 

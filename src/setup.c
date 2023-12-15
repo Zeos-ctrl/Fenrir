@@ -3,6 +3,7 @@
 #include <relic/relic_cp.h>
 #include <openssl/evp.h> /* OpenSSL EVP headers for hashing */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,75 +17,71 @@
 #include "params.h"
 
 
-int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
+int device_setup_root(key_pair_t *root, char *id, size_t id_len)
 {
     if (id_len < 0 ) {
         printf("Identity must be larger than 0 bytes\n");
         return -1;
     }
-
     int code = RLC_ERR;
-    bn_t N; /* Master secret and order of group */
-
-    /* Hash Identity to gen pub key */
+    bn_t N; /* Order of the Group */
     unsigned int md_len; /* Hash length */
     EVP_MD_CTX *mdctx; /* Hashing context */
     unsigned char hash[EVP_MAX_MD_SIZE]; /* Hash value */
 
-
     RLC_TRY {
-        /* Check for null pointers */
-        if (root == NULL || identity == NULL) {
-            RLC_THROW(ERR_NO_VALID);
-        }
+        g1_null(P);
+        g1_null(c->public_key);
+        g1_null(c->d1->k1);
+        g1_null(c->d2->k1);
+        g2_null(c->d1->k2);
+        g2_null(c->d2->k2);
+        g1_null(c->Q);
+        bn_null(c->d1->secret);
+        bn_null(c->d2->secret);
 
-        bn_null(N);
-        bn_null(root->secret);
-        bn_null(root->cluster_secret);
-        g1_null(root->public_key);
-        g1_null(root->k1);
-        g2_null(root->k2);
-        g1_null(root->Q);
+        /* Copys the domain secret of the parent to d1, then generate a new 
+         * secret for d2 */ 
+        bn_new(N);
+        pc_get_ord(N); 
+        bn_rand_mod(root->d2->secret, N);
+        bn_copy(root->d1->secret, root->d2->secret);
 
-        /* Initialize master secret */
-        bn_new(N); 
-        pc_get_ord(N); /* Get the order of the group */ 
-        bn_rand_mod(root->secret, N); /* Generate random master secret */
-
-        /* Sets the cluster master secret to the master secret */
-        bn_copy(root->cluster_secret, root->secret);
-
+        /* Hash the identity to gen the public key */ 
         mdctx = EVP_MD_CTX_new(); /* Initialize ctx */ 
-        const EVP_MD *EVP_sha3_256() /* Get the md5 hash function */;
-
-        EVP_DigestInit_ex(mdctx, EVP_sha3_256(), NULL); /* Initialize the hash function */
-        EVP_DigestUpdate(mdctx, identity, strlen(identity)); /* Hash the node ID */
-        EVP_DigestFinal_ex(mdctx, hash, &md_len); /* Finalize the hash function */
+        const EVP_MD *EVP_sha3_256(); /* Get the sha3 hash function */
+        EVP_DigestInit_ex(mdctx, EVP_sha3_256(), NULL); /* Initialize the hash function */ 
+        EVP_DigestUpdate(mdctx, id, strlen(id)); /* Hash the node ID */ 
+        EVP_DigestFinal_ex(mdctx, hash, &md_len); /* Finalize the hash function */ 
         
-        g1_map(root->public_key, hash, md_len); /* Map the hash to a point on the curve */
+        /* Map the public key to G1 */ 
+        g1_map(root->public_key, hash, sizeof(hash));
 
-        /* Map private key to groups */
-        g1_map(root->k1, (uint8_t *)root->secret, sizeof(root->secret));
-        g2_map(root->k2, (uint8_t *)root->secret, sizeof(root->secret));
 
-        /* Compute Q = s * Pubkey */
-        g1_mul(root->Q, root->public_key, root->secret);
+        /* Map private key to groups */ 
+        g1_map(root->d1->k1, (uint8_t *)root->public_key, sizeof(root->public_key)); 
+        g2_map(root->d1->k2, (uint8_t *)root->public_key, sizeof(root->public_key));
+        g1_map(root->d2->k1, (uint8_t *)root->public_key, sizeof(root->public_key)); 
+        g2_map(root->d2->k2, (uint8_t *)root->public_key, sizeof(root->public_key));
 
-        /* Print root for debug */ 
+        /* Gen public perameter */ 
+        g1_mul(root->Q, root->public_key, root->d2->secret); /* Qx = Qx * x */
+
+       /* Print root for debug */ 
         printf("Root secret: ");
-        bn_print(root->secret);
+        bn_print(root->d1->secret);
         printf("\n");
         printf("Root cluster secret: ");
-        bn_print(root->cluster_secret);
+        bn_print(root->d2->secret);
         printf("\n");
         printf("Root public key: ");
         g1_print(root->public_key);
         printf("\n");
         printf("Root k1: ");
-        g1_print(root->k1);
+        g1_print(root->d2->k1);
         printf("\n");
         printf("Root k2: ");
-        g2_print(root->k2);
+        g2_print(root->d2->k2);
         printf("\n");
         printf("Root Q: ");
         g1_print(root->Q);
@@ -150,19 +147,19 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
     // Print the struct for debugging
     printf("Received Key Pairing:\n");
     printf("Gateway secret: ");
-    bn_print(gateway->secret);
+    bn_print(gateway->d1->secret);
     printf("\n");
     printf("Gateway cluster secret: ");
-    bn_print(gateway->cluster_secret);
+    bn_print(gateway->d2->secret);
     printf("\n");
     printf("Gateway public key: ");
     g1_print(gateway->public_key);
     printf("\n");
     printf("Gateway k1: ");
-    g1_print(gateway->k1);
+    g1_print(gateway->d1->k1);
     printf("\n");
     printf("Gateway k2: ");
-    g2_print(gateway->k2);
+    g2_print(gateway->d1->k2);
     printf("\n");
     printf("Gateway Q: ");
     g1_print(gateway->Q);
@@ -221,19 +218,19 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
     // Print the struct for debugging
     printf("Received Key Pairing:\n");
     printf("Worker secret: ");
-    bn_print(worker->secret);
+    bn_print(worker->d1->secret);
     printf("\n");
     printf("Worker cluster secret: ");
-    bn_print(worker->cluster_secret);
+    bn_print(worker->d2->secret);
     printf("\n");
     printf("Worker public key: ");
     g1_print(worker->public_key);
     printf("\n");
     printf("Worker k1: ");
-    g1_print(worker->k1);
+    g1_print(worker->d1->k1);
     printf("\n");
     printf("Worker k2: ");
-    g2_print(worker->k2);
+    g2_print(worker->d1->k2);
     printf("\n");
     printf("Worker Q: ");
     g1_print(worker->Q);

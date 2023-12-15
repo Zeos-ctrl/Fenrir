@@ -40,6 +40,7 @@ int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
 
         bn_null(N);
         bn_null(root->secret);
+        bn_null(root->cluster_secret);
         g1_null(root->public_key);
         g1_null(root->k1);
         g2_null(root->k2);
@@ -49,6 +50,9 @@ int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
         bn_new(N); 
         pc_get_ord(N); /* Get the order of the group */ 
         bn_rand_mod(root->secret, N); /* Generate random master secret */
+
+        /* Sets the cluster master secret to the master secret */
+        bn_copy(root->cluster_secret, root->secret);
 
         mdctx = EVP_MD_CTX_new(); /* Initialize ctx */ 
         const EVP_MD *EVP_sha3_256() /* Get the md5 hash function */;
@@ -69,6 +73,9 @@ int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
         /* Print root for debug */ 
         printf("Root secret: ");
         bn_print(root->secret);
+        printf("\n");
+        printf("Root cluster secret: ");
+        bn_print(root->cluster_secret);
         printf("\n");
         printf("Root public key: ");
         g1_print(root->public_key);
@@ -103,7 +110,7 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
 
     int status, client_fd;
     struct sockaddr_in serv_addr;
-    uint8_t buffer[sizeof(key_pair_t)] = {0};
+    uint8_t buffer[sizeof(key_pair_t)];
     // Connect to root node
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(ROOT_PORT);
@@ -126,16 +133,13 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
         return -1;
     }
     // Construct a packet to send 
+    printf("Constructing packet...\n");
     aes_packet_t packet;
     packet.type = 0;
     memcpy(packet.identity, identity, id_len);
-    packet.identity[id_len] = '\0';
-    packet.iv[0] = '\0';
-    packet.payload_length = 0;
-    packet.payload[0] = '\0';
 
     // Send request
-    uint8_t buf[1024] = {0};
+    uint8_t buf[sizeof(packet)];
     serialize_aes(buf, sizeof(buf), &packet);
     send(client_fd, buf, sizeof(buf), 0);
     printf("Request sent\n");
@@ -147,6 +151,9 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
     printf("Received Key Pairing:\n");
     printf("Gateway secret: ");
     bn_print(gateway->secret);
+    printf("\n");
+    printf("Gateway cluster secret: ");
+    bn_print(gateway->cluster_secret);
     printf("\n");
     printf("Gateway public key: ");
     g1_print(gateway->public_key);
@@ -215,6 +222,9 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
     printf("Received Key Pairing:\n");
     printf("Worker secret: ");
     bn_print(worker->secret);
+    printf("\n");
+    printf("Worker cluster secret: ");
+    bn_print(worker->cluster_secret);
     printf("\n");
     printf("Worker public key: ");
     g1_print(worker->public_key);

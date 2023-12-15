@@ -33,12 +33,18 @@ int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len,
         g2_null(child->k2);
         g1_null(child->Q);
         bn_null(child->secret);
+        bn_null(child->cluster_secret);
         bn_null(N);
 
-        /* Gen shared value */
+        /* Set the childs secret number for generating the shared key with 
+         * cluser head to the parents secret number */
+        bn_copy(child->secret, master);
+
+        /* Gen new secret number for the child to become a cluster head if 
+         * needed */
         bn_new(N);
         pc_get_ord(N); /* Get the order of the group G1 */
-        bn_rand_mod(child->secret, N); /* Gen random number in Zq */
+        bn_rand_mod(child->cluster_secret, N); /* Gen random number in Zq */
 
         /* Hash Identity to gen pub key */
 

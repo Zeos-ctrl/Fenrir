@@ -13,6 +13,8 @@ typedef struct key_pair /* Key pair struct */
     g2_t k2; /* Private key member of G2 */
     g1_t Q; /* Public perameter member of G1 */
     bn_t secret; /* Secret value member of Z */
+    bn_t cluster_secret; /* If the struct is given to a cluster head this value 
+    is used as their secret value */
 } key_pair_t;
 
 /**

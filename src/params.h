@@ -5,7 +5,7 @@
 #define GATEWAY_PORT 8081
 #define ROOT_PORT 8080
 #define PACKET_SIZE 1024
-#define DEVICE_TYPE 3
+#define DEVICE_TYPE 2
 #define CYPHER 1
 
 /* Ascii art for the banner */

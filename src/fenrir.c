@@ -88,19 +88,20 @@ int main(int argc, char *argv[])
             }
 
             aes_packet_t packet;
-            deserialize_aes(reqbuffer, readreq, &packet);
+            deserialize_aes(reqbuffer, sizeof(reqbuffer), &packet);
             printf("Received request from client\n");
             if (packet.type == 0 ) {
                 key_pair_t child;
                 if (bilinear_key_pair(&child, packet.identity, 
-                            sizeof(packet.identity), &root, (bn_st *)&root.secret) != RLC_OK) {
+                            sizeof(packet.identity), &root, (bn_st *)&root.cluster_secret) != RLC_OK) {
                     printf("Failed to generate key pair exiting!\n");
                     goto exit;
                 }
                 printf("Key pair generated\n");
                 // Serialize and send the struct
-                serialize_k(reqbuffer, sizeof(reqbuffer), &child);
-                send(new_socket, reqbuffer, sizeof(reqbuffer), 0);
+                uint8_t buffer[sizeof(child)];
+                serialize_k(buffer, sizeof(buffer), &child);
+                send(new_socket, buffer, sizeof(buffer), 0);
                 printf("Key pair sent\n");
             } else {
                 printf("Invalid request type exiting!\n");
@@ -114,6 +115,7 @@ int main(int argc, char *argv[])
     } else if (DEVICE_TYPE == GATEWAY) {
         printf("Setting up KDC...\n");
         key_pair_t gateway;
+        key_pair_t gateway2;
         char *identity = "gateway"; /* Identity */
         if (device_setup_gateway(&gateway, identity, strlen(identity)) != RLC_OK) {
             printf("Failed to setup KDC exiting!\n");
@@ -161,12 +163,14 @@ int main(int argc, char *argv[])
                 printf("Generating key pair...\n");
                 key_pair_t child;
                 if (bilinear_key_pair(&child, packet.identity, 
-                            sizeof(packet.identity), &gateway, (bn_st *)&gateway.secret) != RLC_OK) {
+                            sizeof(packet.identity), &gateway, (bn_st *)&gateway.cluster_secret) != RLC_OK) {
                     printf("Failed to generate key pair exiting!\n");
                     goto exit;
                 }
-                serialize_k(reqbuffer, sizeof(reqbuffer), &child);
-                send(new_socket, reqbuffer, sizeof(reqbuffer), 0);
+                printf("Key pair generated\n");
+                uint8_t keybuffer[sizeof(child)];
+                serialize_k(keybuffer, sizeof(keybuffer), &child);
+                send(new_socket, keybuffer, sizeof(keybuffer), 0);
                 printf("Key pair sent\n");
 
             } else if (packet.type == 1){
@@ -196,7 +200,7 @@ int main(int argc, char *argv[])
                     unsigned char *key;
                     char *plaintext;
 
-                    deserialize_ascon(reqbuffer, sizeof(reqbuffer), &packet);
+                    deserialize_ascon((char *)reqbuffer, sizeof(reqbuffer), &packet);
                     sok_gen_sym_key(key, &gateway, packet.identity, sizeof(packet.identity));
                     ascon_dec((unsigned char*)plaintext, sizeof(packet.payload), packet.tag, key, packet.nonce);
                     printf("ASCON decrypted\n");
@@ -267,7 +271,7 @@ int main(int argc, char *argv[])
             printf("Constructing packet...\n");
             aes_packet_t packet;
             packet.type = 1;
-            memcpy(packet.identity, identity, strlen(identity));
+            memcpy(packet.identity, node.public_key, sizeof(node.public_key));
             memcpy(packet.iv, iv, sizeof(iv));
             packet.payload_length = strlen((char *)ciphertext);
             packet.payload = strdup((char *)ciphertext);
@@ -297,7 +301,6 @@ int main(int argc, char *argv[])
             goto exit;
         }
         close(client_fd);
-        close(server_fd);
     } else {
         printf("Invalid device type exiting!\n");
         goto exit;

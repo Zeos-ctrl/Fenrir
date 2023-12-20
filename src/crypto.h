@@ -6,34 +6,29 @@
 
 #define BUF_SIZE 4096
 
-typedef struct domain_key_pair /* Domain key pair struct */
-{
-    g1_t k1; /* Private key member of G1 */
-    g2_t k2; /* Private key member of G2 */
-    bn_t secret; /* Secret value member of Z for the current domain*/
-} domain_key_pair_t;
-
 typedef struct key_pair /* Key pair struct */
 {
     g1_t public_key; /* Public key member of G1 */
-    domain_key_pair_t *d1; /* Pointer to the domain key pair */
-    domain_key_pair_t *d2; /* Pointer to the domain key pair */
+    g1_t k1; /* Private key member of G1 */
+    g2_t k2; /* Private key member of G2 */
     g1_t Q; /* Public perameter member of G1 */
+    bn_t secret; /* Secret value member of Z */
+    bn_t cluster_secret; /* If the struct is given to a cluster head this value 
+    is used as their secret value */
 } key_pair_t;
 
 /**
- * Generates the key pairs for the domains of a requesting node
+ * Generates the bilinear key pair for a requesting node
  *
- * @param[out] key_pair_t *c - The key pair to be generated
+ * @param[out] key_pair_t *key_pair - The key pair to be generated
  * @param[in] char *id - The id of the requesting node
  * @param[in] size_t id_len - The length of the id
- * @param[in] key_pair_t *p - The key pair of the parent node
- * @param[in] bn_t ds - The domain secret value
+ * @param[in] key_pair_t *parent - The key pair of the parent node
+ * @param[in] bn_t master - The master secret value
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int domain_key_generation(key_pair_t *c, char *id, size_t id_len,
-        key_pair_t *p, bn_t ds);
-
+int bilinear_key_pair(key_pair_t *child, char *child_id, size_t child_id_len,
+        key_pair_t *parent, bn_t master);
 /**
  * Encrypts a message using the ascon cipher 
  *
@@ -87,7 +82,7 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
         unsigned char *key, unsigned char iv[16], size_t iv_len);
 /**
  * Generates a symmetric key for a given sender and receiver 
- * using sakai-kasahara non-interactive key exchange up the heirarchy
+ * using sakai-kasahara non-interactive key exchange 
  *
  * @param[out] uint8_t *key - The buffer to store the symmetric key 
  * @param[in] key_pair_t *sender - The key pair of the sender 
@@ -95,18 +90,6 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
  * @param[in] size_t id_len - The length of the id
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int sok_key_d1(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_len);
-
-/**
- * Generates a symmetric key for a given sender and receiver 
- * using sakai-kasahara non-interactive key exchange down the heirarchy
- *
- * @param[out] uint8_t *key - The buffer to store the symmetric key 
- * @param[in] key_pair_t *sender - The key pair of the sender 
- * @param[in] char *receiver - The id of the receiver
- * @param[in] size_t id_len - The length of the id
- * @return int - RLC_OK if successful, RLC_ERR otherwise
- */
-int sok_key_d2(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_len);
+int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_len);
 
 #endif // CRYPTO_H

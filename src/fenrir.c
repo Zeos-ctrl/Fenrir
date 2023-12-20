@@ -92,7 +92,8 @@ int main(int argc, char *argv[])
             printf("Received request from client\n");
             if (packet.type == 0 ) {
                 key_pair_t child;
-                if (domain_key_generation(&child, identity, strlen(identity), &root, (bn_st *)&root.d2->secret) != RLC_OK) {
+                if (bilinear_key_pair(&child, packet.identity, 
+                            sizeof(packet.identity), &root, (bn_st *)&root.cluster_secret) != RLC_OK) {
                     printf("Failed to generate key pair exiting!\n");
                     goto exit;
                 }
@@ -114,6 +115,7 @@ int main(int argc, char *argv[])
     } else if (DEVICE_TYPE == GATEWAY) {
         printf("Setting up KDC...\n");
         key_pair_t gateway;
+        key_pair_t gateway2;
         char *identity = "gateway"; /* Identity */
         if (device_setup_gateway(&gateway, identity, strlen(identity)) != RLC_OK) {
             printf("Failed to setup KDC exiting!\n");
@@ -160,7 +162,8 @@ int main(int argc, char *argv[])
            if (packet.type == 0) {
                 printf("Generating key pair...\n");
                 key_pair_t child;
-                if (domain_key_generation(&child, identity, strlen(identity), &gateway, (bn_st *)&gateway.d2->secret) != RLC_OK) {
+                if (bilinear_key_pair(&child, packet.identity, 
+                            sizeof(packet.identity), &gateway, (bn_st *)&gateway.cluster_secret) != RLC_OK) {
                     printf("Failed to generate key pair exiting!\n");
                     goto exit;
                 }
@@ -179,7 +182,7 @@ int main(int argc, char *argv[])
                     key = RLC_ALLOCA(uint8_t, 128);
 
                     deserialize_aes(reqbuffer, sizeof(packet), &packet);
-                    sok_key_d2(key, &gateway, packet.identity, sizeof(packet.identity));
+                    sok_gen_sym_key(key, &gateway, packet.identity, sizeof(packet.identity));
                     printf("\nKey: ");
                     for (int i = 0; i < 16; i++) {
                         printf("%02x", key[i]);
@@ -198,7 +201,7 @@ int main(int argc, char *argv[])
                     char *plaintext;
 
                     deserialize_ascon((char *)reqbuffer, sizeof(reqbuffer), &packet);
-                    sok_key_d2(key, &gateway, packet.identity, sizeof(packet.identity));
+                    sok_gen_sym_key(key, &gateway, packet.identity, sizeof(packet.identity));
                     ascon_dec((unsigned char*)plaintext, sizeof(packet.payload), packet.tag, key, packet.nonce);
                     printf("ASCON decrypted\n");
                     printf("Msg: %s\n", plaintext);
@@ -255,7 +258,7 @@ int main(int argc, char *argv[])
             uint8_t iv[16] = {0};
             unsigned char ciphertext[1024];
 
-            sok_key_d1(key, &node, gateway, strlen(gateway));
+            sok_gen_sym_key(key, &node, gateway, strlen(gateway));
             printf("\nKey: ");
             for (int i = 0; i < 16; i++) {
                 printf("%02x", key[i]);
@@ -287,7 +290,7 @@ int main(int argc, char *argv[])
             uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN];
             char *buffer;
 
-            sok_key_d1(key, &node, gateway, strlen(gateway));
+            sok_gen_sym_key(key, &node, gateway, strlen(gateway));
             ascon_enc((unsigned char*)buffer, identity, strlen(identity), tag,  key, nonce);
             serialize_ascon(buffer, sizeof(buffer), &packet);
             send(client_fd, buffer, sizeof(buffer), 0);

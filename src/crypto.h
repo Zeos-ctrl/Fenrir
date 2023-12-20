@@ -13,8 +13,6 @@ typedef struct key_pair /* Key pair struct */
     g2_t k2; /* Private key member of G2 */
     g1_t Q; /* Public perameter member of G1 */
     bn_t secret; /* Secret value member of Z */
-    bn_t cluster_secret; /* If the struct is given to a cluster head this value 
-    is used as their secret value */
 } key_pair_t;
 
 /**
@@ -81,7 +79,7 @@ int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_l
 int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphertext_len,
         unsigned char *key, unsigned char iv[16], size_t iv_len);
 /**
- * Generates a symmetric key for a given sender and receiver 
+ * Generates a partial symmetric key for a given sender and receiver 
  * using sakai-kasahara non-interactive key exchange 
  *
  * @param[out] uint8_t *key - The buffer to store the symmetric key 
@@ -91,5 +89,19 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
 int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_len);
+
+/**
+ *  Derives the full symmetric key from the two partial keys, the upper half 
+ *  of the key is derived from the higher level in the heirarchy and the lower 
+ *  half of the key is derived from the lower level in the heirarchy.
+ *
+ *  @param[out] unsigned char *key - The buffer to store the symmetric key 
+ *  @param[in] unsigned char *partial_key_upper - The upper half of the key 
+ *  @param[in] unsigned char *partial_key_lower - The lower half of the key 
+ *  @param[in] size_t key_len - The length of the key 
+ *  @return int - The length of the key
+ */
+int derive_key(const unsigned char *partial_key_upper, const unsigned char *partial_key_lower,
+        unsigned char *key, size_t key_len);
 
 #endif // CRYPTO_H

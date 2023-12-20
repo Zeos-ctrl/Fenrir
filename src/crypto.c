@@ -33,18 +33,11 @@ int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len,
         g2_null(child->k2);
         g1_null(child->Q);
         bn_null(child->secret);
-        bn_null(child->cluster_secret);
         bn_null(N);
 
-        /* Set the childs secret number for generating the shared key with 
-         * cluser head to the parents secret number */
-        bn_copy(child->secret, master);
-
-        /* Gen new secret number for the child to become a cluster head if 
-         * needed */
         bn_new(N);
         pc_get_ord(N); /* Get the order of the group G1 */
-        bn_rand_mod(child->cluster_secret, N); /* Gen random number in Zq */
+        bn_rand_mod(child->secret, N); /* Gen random number in Zq */
 
         /* Hash Identity to gen pub key */
 
@@ -280,13 +273,6 @@ int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_
 
         memcpy(key, buf, sizeof(&key));
 
-        /* Print the key */ 
-        printf("\nKey: ");
-        for (int i = 0; i < 16; i++) {
-            printf("%02x", key[i]);
-        }
-        printf("\n");
-
     } RLC_CATCH_ANY {
         RLC_THROW(ERR_CAUGHT);
     } RLC_FINALLY {
@@ -299,4 +285,33 @@ int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_
     code = RLC_OK;
  
     return code;
+}
+
+int derive_key(const unsigned char *partial_key_upper, const unsigned char *partial_key_lower,
+        unsigned char *key, size_t key_len)
+{
+    // Concatenate the two partial keys into one 
+    unsigned char *concat_key[256];
+    memcpy(concat_key, partial_key_upper, 128);
+    memcpy(concat_key + 128, partial_key_lower, 128);
+
+    // Hash the concatenated key to get the derived key 
+    unsigned char *derived_key;
+    EVP_MD_CTX *mdctx;
+    const EVP_MD *md;
+    unsigned int md_len;
+
+    md = EVP_sha3_256();
+    mdctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(mdctx, md, NULL);
+    EVP_DigestUpdate(mdctx, concat_key, sizeof(concat_key));
+    EVP_DigestFinal_ex(mdctx, derived_key, &md_len);
+
+    EVP_MD_CTX_free(mdctx);
+
+    // Store the derived key in the key buffer
+    memcpy(key, derived_key, 128);
+    free(derived_key);
+
+    return sizeof(key);
 }

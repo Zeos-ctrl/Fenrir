@@ -40,7 +40,6 @@ int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
 
         bn_null(N);
         bn_null(root->secret);
-        bn_null(root->cluster_secret);
         g1_null(root->public_key);
         g1_null(root->k1);
         g2_null(root->k2);
@@ -51,8 +50,6 @@ int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
         pc_get_ord(N); /* Get the order of the group */ 
         bn_rand_mod(root->secret, N); /* Generate random master secret */
 
-        /* Sets the cluster master secret to the master secret */
-        bn_copy(root->cluster_secret, root->secret);
 
         mdctx = EVP_MD_CTX_new(); /* Initialize ctx */ 
         const EVP_MD *EVP_sha3_256() /* Get the md5 hash function */;
@@ -73,9 +70,6 @@ int device_setup_root(key_pair_t *root, char *identity, size_t id_len)
         /* Print root for debug */ 
         printf("Root secret: ");
         bn_print(root->secret);
-        printf("\n");
-        printf("Root cluster secret: ");
-        bn_print(root->cluster_secret);
         printf("\n");
         printf("Root public key: ");
         g1_print(root->public_key);
@@ -152,9 +146,6 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
     printf("Gateway secret: ");
     bn_print(gateway->secret);
     printf("\n");
-    printf("Gateway cluster secret: ");
-    bn_print(gateway->cluster_secret);
-    printf("\n");
     printf("Gateway public key: ");
     g1_print(gateway->public_key);
     printf("\n");
@@ -222,9 +213,6 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
     printf("Received Key Pairing:\n");
     printf("Worker secret: ");
     bn_print(worker->secret);
-    printf("\n");
-    printf("Worker cluster secret: ");
-    bn_print(worker->cluster_secret);
     printf("\n");
     printf("Worker public key: ");
     g1_print(worker->public_key);

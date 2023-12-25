@@ -296,7 +296,7 @@ int derive_key(const unsigned char *partial_key_upper, const unsigned char *part
     memcpy(concat_key + 128, partial_key_lower, 128);
 
     // Hash the concatenated key to get the derived key 
-    unsigned char *derived_key;
+    unsigned char derived_key[EVP_MAX_MD_SIZE];
     EVP_MD_CTX *mdctx;
     const EVP_MD *md;
     unsigned int md_len;
@@ -310,8 +310,7 @@ int derive_key(const unsigned char *partial_key_upper, const unsigned char *part
     EVP_MD_CTX_free(mdctx);
 
     // Store the derived key in the key buffer
-    memcpy(key, derived_key, 128);
-    free(derived_key);
+    memcpy(key, derived_key, sizeof(derived_key));
 
     return sizeof(key);
 }

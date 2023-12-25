@@ -31,4 +31,18 @@ typedef enum {
     ASCON = 2,
 } Cypher;
 
+/* Specifies the packet type */
+enum PacketType{
+    AES_PACKET,
+    ASCON_PACKET,
+    KEY_PAIR,
+    PARTIAL_KEY
+};
+
+enum NetworkOperation {
+    OPERATION_GEN, /* Generate Key Pairing */
+    OPERATION_CRYPT, /* Encrypt and Decrypt operations */
+    OPERATION_EXC /* Exchange partial key */
+};
+
 #endif // !PARAMS_H

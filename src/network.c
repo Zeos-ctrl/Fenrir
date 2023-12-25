@@ -5,6 +5,26 @@
 #include "params.h"
 #include "crypto.h"
 
+void serializePacket(PacketHeader *header, uint8_t *buffer, size_t data_size)
+{
+    printf("Serializing Packet...");
+    if (data_size > sizeof(PacketHeader)) {
+        printf("Data size too large to deserialize\n");
+        return;
+    }
+    memcpy(buffer, header, sizeof(PacketHeader));
+}
+
+void deserializePacket(PacketHeader *header, void* data, size_t data_size)
+{
+    printf("Deserializing Packet...");
+    if (data_size > sizeof(PacketHeader)) {
+        printf("Data size too large to deserialize\n");
+        return;
+    }
+    memcpy(header, data, sizeof(PacketHeader));
+}
+
 int serialize_k(uint8_t *buffer, size_t size, key_pair_t *key_pair)
 {
     printf("Serializing key pair\n");
@@ -37,9 +57,10 @@ int serialize_ascon(char *buffer, size_t size, ascon_packet_t *packet)
 
     // Serialize the fixed-size fields
     size_t offset = 0;
-    buffer[offset++] = packet->type;
     memcpy(buffer + offset, packet->identity, sizeof(packet->identity));
     offset += sizeof(packet->identity);
+    memcpy(buffer + offset, packet->partial_key, sizeof(packet->partial_key));
+    offset += sizeof(packet->partial_key);
     memcpy(buffer + offset, packet->nonce, sizeof(packet->nonce));
     offset += sizeof(packet->nonce);
     memcpy(buffer + offset, packet->tag, sizeof(packet->tag));
@@ -70,9 +91,10 @@ int deserialize_ascon(char *buffer, size_t size, ascon_packet_t *packet)
 
     // Deserialize the fixed-size fields
     size_t offset = 0;
-    packet->type = buffer[offset++];
     memcpy(packet->identity, buffer + offset, sizeof(packet->identity));
     offset += sizeof(packet->identity);
+    memcpy(buffer + offset, packet->partial_key, sizeof(packet->partial_key));
+    offset += sizeof(packet->partial_key);
     memcpy(packet->nonce, buffer + offset, sizeof(packet->nonce));
     offset += sizeof(packet->nonce);
     memcpy(packet->tag, buffer + offset, sizeof(packet->tag));
@@ -114,9 +136,10 @@ int serialize_aes(uint8_t *buffer, size_t size, aes_packet_t *packet)
 
     // Serialize the fixed-size fields
     size_t offset = 0;
-    buffer[offset++] = packet->type;
     memcpy(buffer + offset, packet->identity, sizeof(packet->identity));
     offset += sizeof(packet->identity);
+    memcpy(buffer + offset, packet->partial_key, sizeof(packet->partial_key));
+    offset += sizeof(packet->partial_key);
     memcpy(buffer + offset, packet->iv, sizeof(packet->iv));
     offset += sizeof(packet->iv);
 
@@ -146,9 +169,10 @@ int deserialize_aes(uint8_t *buffer, size_t size, aes_packet_t *packet)
 
     // Deserialize the fixed-size fields
     size_t offset = 0;
-    packet->type = buffer[offset++];
     memcpy(packet->identity, buffer + offset, sizeof(packet->identity));
     offset += sizeof(packet->identity);
+    memcpy(buffer + offset, packet->partial_key, sizeof(packet->partial_key));
+    offset += sizeof(packet->partial_key);
     memcpy(packet->iv, buffer + offset, sizeof(packet->iv));
     offset += sizeof(packet->iv);
 

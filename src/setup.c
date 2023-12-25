@@ -128,18 +128,21 @@ int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len)
     }
     // Construct a packet to send 
     printf("Constructing packet...\n");
-    aes_packet_t packet;
-    packet.type = 0;
-    memcpy(packet.identity, identity, id_len);
+    PacketHeader packet;
+    packet.operation = OPERATION_GEN;
+    packet.type = KEY_PAIR;
+    memcpy(packet.buffer, identity, id_len);
 
     // Send request
     uint8_t buf[sizeof(packet)];
-    serialize_aes(buf, sizeof(buf), &packet);
+    serializePacket(&packet, buf, sizeof(packet));
     send(client_fd, buf, sizeof(buf), 0);
     printf("Request sent\n");
     read(client_fd, buffer, sizeof(buffer));
     // Deserialize the buffer
-    deserialize_k(buffer, sizeof(buffer), gateway);
+    PacketHeader response;
+    deserializePacket(&response, buffer, sizeof(buffer));
+    deserialize_k(response.buffer, sizeof(response.buffer), gateway);
 
     // Print the struct for debugging
     printf("Received Key Pairing:\n");
@@ -196,18 +199,25 @@ int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len)
         printf("\nConnection Failed \n");
         return -1;
     }
-    // Construct a packet to send 
+
+    PacketHeader request;
     aes_packet_t packet;
-    packet.type = 0;
     memcpy(packet.identity, identity, id_len);
+    request.operation = OPERATION_GEN;
+    request.type = KEY_PAIR;
     // Send request
     uint8_t buf[1024] = {0};
+    uint8_t request_buffer[sizeof(request)] = {0};
     serialize_aes(buf, sizeof(buf), &packet);
-    send(client_fd, buf, sizeof(buf), 0);
+    memcpy(request.buffer, buf, sizeof(buf));
+    serializePacket(&request, buf, sizeof(buf));
+    send(client_fd, &request, sizeof(request), 0);
     printf("Request sent\n");
     read(client_fd, buffer, sizeof(buffer));
     // Deserialize the buffer
-    deserialize_k(buffer, sizeof(buffer), worker);
+    PacketHeader response;
+    deserializePacket(&response, buffer, sizeof(buffer));
+    deserialize_k(response.buffer, sizeof(response.buffer), worker);
 
     // Print the struct for debugging
     printf("Received Key Pairing:\n");

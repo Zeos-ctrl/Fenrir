@@ -5,26 +5,12 @@
 #include <ascon/ascon.h>
 
 #include "crypto.h"
-/**
- * Packet Types:
- *
- *     COMPILED WITH ASCON BIT LAYOUT:
- *     |.....1...........128.......128....128.......X......|
- *     | DECRYPT TAG | IDENTITY | NONCE | TAG | CIPHERTEXT |
- *
- *     COMPILED WITH AES BIT LAYOUT:
- *     |.....1...........128......128......X......|
- *     | DECRYPT TAG | IDENTITY | IV | CIPHERTEXT |
- *
- *     GEN KEY PAIR:
- *     |.....1........X.....|
- *     | GEN TAG | IDENTITY |
- */
+#include "params.h"
 
 /* The ascon packet structure */
 typedef struct {
-    uint8_t type; /* The type of operation, 0 - gen key, 1 - decrypt message */
     char identity[128]; /* The identity of the sender */ 
+    char partial_key[128]; /* The partial SOK key */
     unsigned char nonce[ASCON_AEAD_NONCE_LEN]; /* The nonce */
     unsigned char tag[ASCON_AEAD_TAG_MIN_SECURE_LEN]; /* The tag to verify the enc */
     size_t payload_length; /* The length of the payload */
@@ -33,13 +19,27 @@ typedef struct {
 
 /* The aes packet structure */
 typedef struct {
-    uint8_t type; /* The type of operation, 0 - gen key, 1 - decrypt message */ 
     char identity[128]; /* The identity of the sender */
+    char partial_key[128]; /* The partial SOK key */
     uint8_t iv[16]; /* The iv */
     size_t payload_length; /* The length of the payload */
     char *payload; /* The encrypted payload */
 } aes_packet_t;
 
+/**
+ *  The Packet header structure, the type is the type of packet encapsulated
+ *  in the buffer and the operation is the requested operation to be performed 
+ *  on the packet.
+ */
+typedef struct {
+    enum PacketType type;
+    enum NetworkOperation operation;
+    uint8_t *buffer;
+} PacketHeader;
+
+void serializePacket(PacketHeader *header, uint8_t *buffer, size_t data_size);
+
+void deserializePacket(PacketHeader *header, void* data, size_t data_size);
 /**
  * Serializes the key pair into a buffer
  *

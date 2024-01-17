@@ -11,8 +11,8 @@
 
 #include "crypto.h"
 
-int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len, 
-        key_pair_t *parent, bn_t master)
+int gen_params(key_params_t *child, char *child_id, size_t id_len, 
+        key_params_t *parent, bn_t master)
 {
     if (id_len < 0 ) {
         printf("Identity must be larger than 0 bytes\n");
@@ -35,6 +35,9 @@ int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len,
         bn_null(child->secret);
         bn_null(N);
 
+
+        /* Gen new secret number for the child to become a cluster head if 
+         * needed */
         bn_new(N);
         pc_get_ord(N); /* Get the order of the group G1 */
         bn_rand_mod(child->secret, N); /* Gen random number in Zq */
@@ -216,11 +219,11 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
     return plaintext_len;
 }
 
-int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_len)
+int sok_gen_sym_key(uint8_t *key, key_params_t *sender, char *receiver, size_t id_len)
 {        
     int first = 0, code = RLC_ERR;
     size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);
-    uint8_t *buf;
+    uint8_t *buf, *key2;
     g1_t p;
     g2_t q;
     gt_t e;
@@ -231,12 +234,11 @@ int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_
         gt_new(e);
 
         size = gt_size_bin(e, 0);
-        key = RLC_ALLOCA(uint8_t, size);
-        if (key == NULL) {
+        key2 = RLC_ALLOCA(uint8_t, size);
+        if (key2 == NULL) {
             RLC_THROW(ERR_NO_MEMORY);
         }
 
-        printf("Math...\n");
         if (len1 == len2) {
             if (strncmp((char *)sender->public_key, receiver, len1) == 0) {
                 RLC_THROW(ERR_NO_VALID);
@@ -252,7 +254,6 @@ int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_
             }
         }
         
-        printf("Generating shared value...\n");
         if (pc_map_is_type1()) {
             g2_map(q, (uint8_t *)receiver, len2);
             pc_map(e, sender->k1, q);
@@ -266,10 +267,9 @@ int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_
             }
         }
 
-        printf("Writing key to buffer...\n");
         buf = RLC_ALLOCA(uint8_t, 128);
-        gt_write_bin(key, size, e, 0);
-        md_kdf(buf, 128, key, size);
+        gt_write_bin(key2, size, e, 0);
+        md_kdf(buf, 128, key2, size);
 
         memcpy(key, buf, sizeof(&key));
 
@@ -280,37 +280,53 @@ int sok_gen_sym_key(uint8_t *key, key_pair_t *sender, char *receiver, size_t id_
         g2_free(q);
         gt_free(e);
         RLC_FREE(buf);
-        RLC_FREE(key);
     }
     code = RLC_OK;
  
     return code;
 }
 
-int derive_key(const unsigned char *partial_key_upper, const unsigned char *partial_key_lower,
-        unsigned char *key, size_t key_len)
+int derive_key(unsigned char *upper, size_t upper_len, unsigned char *lower, size_t lower_len,
+        uint8_t *key, size_t key_len)
 {
-    // Concatenate the two partial keys into one 
-    unsigned char *concat_key[256];
-    memcpy(concat_key, partial_key_upper, 128);
-    memcpy(concat_key + 128, partial_key_lower, 128);
+    if (upper_len <= 0 || lower_len <= 0)
+    {
+        printf("Unsupported upper or lower key length...\n");
+        printf("Upper: %ld\n", upper_len);
+        printf("Lower: %ld\n", lower_len);
+        return -1;
+    }
 
-    // Hash the concatenated key to get the derived key 
-    unsigned char derived_key[EVP_MAX_MD_SIZE];
-    EVP_MD_CTX *mdctx;
-    const EVP_MD *md;
-    unsigned int md_len;
+    if (key_len <= 0)
+    {
+        printf("Output key needs to be initialised\n");
+        return -1;
+    }
 
-    md = EVP_sha3_256();
-    mdctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(mdctx, md, NULL);
-    EVP_DigestUpdate(mdctx, concat_key, sizeof(concat_key));
-    EVP_DigestFinal_ex(mdctx, derived_key, &md_len);
+    uint8_t offset = 0;
+    char buffer[128];
+    memcpy(buffer + offset, upper, 64);
+    offset += 64;
+    memcpy(buffer + offset, lower, 64);
 
-    EVP_MD_CTX_free(mdctx);
+    unsigned int md_len; /* Hash length */
+    EVP_MD_CTX *mdctx; /* Hashing context */
+    unsigned char hash[EVP_MAX_MD_SIZE]; /* Hash value */
 
-    // Store the derived key in the key buffer
-    memcpy(key, derived_key, sizeof(derived_key));
+    mdctx = EVP_MD_CTX_new(); /* Initialize ctx */ 
+    const EVP_MD *EVP_sha3_256() /* Get the sha3 hash function */;
 
+    EVP_DigestInit_ex(mdctx, EVP_sha3_256(), NULL); /* Initialize the hash function */
+    EVP_DigestUpdate(mdctx, buffer, strlen(buffer)); /* Hash the node ID */
+    EVP_DigestFinal_ex(mdctx, hash, &md_len); /* Finalize the hash function */
+
+    memcpy(key, hash, key_len);
+
+    printf("\nDerived Key: ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02x", key[i]);
+    }
+    printf("\n");
+    
     return sizeof(key);
 }

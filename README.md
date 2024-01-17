@@ -24,3 +24,20 @@ This project uses the following library's:
 Follow the installation instructions for the two library's above and then run 
 **make** in the root directory, this will build the two files **Fenrir** and 
 **Tests** in the root directory.
+
+## Tests 
+
+Fenrir is designed to test the power efficiency of HIBE (Hierarchical Identity 
+Based Encryption), to achieve this it runs the following tests:
+
+1. Parameter Generation - Tests the generation of Public Key (Identity), Secret
+value, K1, K2 and Q.
+2. Shared Key Generation using SOK and a Hash Function - The test generates a 
+partial key for both devices on different levels of a hierarchy, combines them 
+and hashes the result to generate a 128-bit key.
+3. Message Encryption - Comparing AES-128 and ASCON-128
+4. Message Decryption - Comparing AES-128 and ASCON-128
+
+The results will be collected by running the tests 100 times and getting an 
+average value, the main comparison being between an X86 machine and an arm64 
+one.

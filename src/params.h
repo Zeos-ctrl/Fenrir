@@ -1,11 +1,6 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
-#define GATEWAY_IP "192.168.1.126"
-#define GATEWAY_PORT 8081
-#define ROOT_PORT 8080
-#define PACKET_SIZE 1024
-#define DEVICE_TYPE 2
 #define CYPHER 1
 
 /* Ascii art for the banner */
@@ -18,31 +13,10 @@ const char asciiArt[] =
 "   \\ \\__\\   \\ \\_______\\ \\__\\\\ \\__\\ \\__\\\\ _\\\\ \\__\\ \\__\\\\ _\\\n"
 "    \\|__|    \\|_______|\\|__| \\|__|\\|__|\\|__|\\|__|\\|__|\\|__|";
 
-/* Specifies the device type */
-typedef enum {
-    ROOT = 1,
-    GATEWAY = 2,
-    NODE = 3,
-} DeviceType;
-
 /* Specifies the cypher type */
 typedef enum {
     AES = 1,
     ASCON = 2,
 } Cypher;
-
-/* Specifies the packet type */
-enum PacketType{
-    AES_PACKET,
-    ASCON_PACKET,
-    KEY_PAIR,
-    PARTIAL_KEY
-};
-
-enum NetworkOperation {
-    OPERATION_GEN, /* Generate Key Pairing */
-    OPERATION_CRYPT, /* Encrypt and Decrypt operations */
-    OPERATION_EXC /* Exchange partial key */
-};
 
 #endif // !PARAMS_H

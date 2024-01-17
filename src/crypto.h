@@ -6,17 +6,17 @@
 
 #define BUF_SIZE 4096
 
-typedef struct key_pair /* Key pair struct */
+typedef struct key_params /* Key parameters struct */
 {
     g1_t public_key; /* Public key member of G1 */
     g1_t k1; /* Private key member of G1 */
     g2_t k2; /* Private key member of G2 */
     g1_t Q; /* Public perameter member of G1 */
     bn_t secret; /* Secret value member of Z */
-} key_pair_t;
+} key_params_t;
 
 /**
- * Generates the bilinear key pair for a requesting node
+ * Generates the key parameters for a requesting node
  *
  * @param[out] key_pair_t *key_pair - The key pair to be generated
  * @param[in] char *id - The id of the requesting node
@@ -25,8 +25,8 @@ typedef struct key_pair /* Key pair struct */
  * @param[in] bn_t master - The master secret value
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int bilinear_key_pair(key_pair_t *child, char *child_id, size_t child_id_len,
-        key_pair_t *parent, bn_t master);
+int gen_params(key_params_t *child, char *child_id, size_t child_id_len,
+        key_params_t *parent, bn_t master);
 /**
  * Encrypts a message using the ascon cipher 
  *
@@ -88,7 +88,7 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
  * @param[in] size_t id_len - The length of the id
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_len);
+int sok_gen_sym_key(uint8_t *buf, key_params_t *sender, char *receiver, size_t id_len);
 
 /**
  *  Derives the full symmetric key from the two partial keys, the upper half 
@@ -101,7 +101,7 @@ int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_
  *  @param[in] size_t key_len - The length of the key 
  *  @return int - The length of the key
  */
-int derive_key(const unsigned char *partial_key_upper, const unsigned char *partial_key_lower,
-        unsigned char *key, size_t key_len);
+int derive_key(unsigned char *upper, size_t upper_len, unsigned char *lower, size_t lower_len,
+        uint8_t *key, size_t key_len);
 
 #endif // CRYPTO_H

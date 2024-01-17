@@ -6,19 +6,17 @@
 
 #define BUF_SIZE 4096
 
-typedef struct key_pair /* Key pair struct */
+typedef struct key_params /* Key parameters struct */
 {
     g1_t public_key; /* Public key member of G1 */
     g1_t k1; /* Private key member of G1 */
     g2_t k2; /* Private key member of G2 */
     g1_t Q; /* Public perameter member of G1 */
     bn_t secret; /* Secret value member of Z */
-    bn_t cluster_secret; /* If the struct is given to a cluster head this value 
-    is used as their secret value */
-} key_pair_t;
+} key_params_t;
 
 /**
- * Generates the bilinear key pair for a requesting node
+ * Generates the key parameters for a requesting node
  *
  * @param[out] key_pair_t *key_pair - The key pair to be generated
  * @param[in] char *id - The id of the requesting node
@@ -27,8 +25,8 @@ typedef struct key_pair /* Key pair struct */
  * @param[in] bn_t master - The master secret value
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int bilinear_key_pair(key_pair_t *child, char *child_id, size_t child_id_len,
-        key_pair_t *parent, bn_t master);
+int gen_params(key_params_t *child, char *child_id, size_t child_id_len,
+        key_params_t *parent, bn_t master);
 /**
  * Encrypts a message using the ascon cipher 
  *
@@ -90,6 +88,21 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
  * @param[in] size_t id_len - The length of the id
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_len);
+int sok_gen_sym_key(uint8_t *buf, key_params_t *sender, char *receiver, size_t id_len);
+
+/**
+ * Derives a shared key between two parties in different levels of the hierarchy
+ * from the sakai-kasahara non-interactive key exchange 
+ *
+ * @param[out] uint8_t *key - The buffer to store the shared key 
+ * @param[in] size_t key_len - The length of the shared key
+ * @param[in] char *upper - The id of the party in the upper level 
+ * @param[in] size_t upper_len - The length of the upper id 
+ * @param[in] char *lower - The id of the party in the lower level 
+ * @param[in] size_t lower_len - The length of the lower id
+ * @return int - RLC_OK if successful, RLC_ERR otherwise
+ */
+int derive_key(unsigned char *upper, size_t upper_len, unsigned char *lower, size_t lower_len,
+        uint8_t *key, size_t key_len);
 
 #endif // CRYPTO_H

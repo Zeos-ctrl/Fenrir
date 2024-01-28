@@ -13,4 +13,11 @@
  */
 int setup_root(key_params_t *root, char *identity, size_t id_len);
 
+/**
+ * Displays the key parameters to the user
+ * @param[in] params - The key parameters to display
+ * @return void
+ */
+void display_params(key_params_t *params);
+
 #endif // SETUP_H

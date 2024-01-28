@@ -65,22 +65,7 @@ int setup_root(key_params_t *root, char *identity, size_t id_len)
         /* Compute Q = s * Pubkey */
         g1_mul(root->Q, root->public_key, root->secret);
 
-        /* Print root for debug */ 
-        printf("Root secret: ");
-        bn_print(root->secret);
-        printf("\n");
-        printf("Root public key: ");
-        g1_print(root->public_key);
-        printf("\n");
-        printf("Root k1: ");
-        g1_print(root->k1);
-        printf("\n");
-        printf("Root k2: ");
-        g2_print(root->k2);
-        printf("\n");
-        printf("Root Q: ");
-        g1_print(root->Q);
-        printf("\n");
+        display_params(root);
 
     }RLC_CATCH_ANY {
         RLC_THROW(ERR_CAUGHT);
@@ -91,4 +76,23 @@ int setup_root(key_params_t *root, char *identity, size_t id_len)
 
     code = RLC_OK;
     return code;
+}
+
+void display_params(key_params_t *params)
+{
+    printf("Secret: ");
+    bn_print(params->secret);
+    printf("\n");
+    printf("Public key: ");
+    g1_print(params->public_key);
+    printf("\n");
+    printf("k1: ");
+    g1_print(params->k1);
+    printf("\n");
+    printf("k2: ");
+    g2_print(params->k2);
+    printf("\n");
+    printf("Q: ");
+    g1_print(params->Q);
+    printf("\n");
 }

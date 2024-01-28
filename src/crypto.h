@@ -39,8 +39,8 @@ int gen_params(key_params_t *child, char *child_id, size_t child_id_len,
  * @return int - length of the ciphertext
  */
 int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
-        uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN],
-        uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN]);
+        uint8_t *tag, uint8_t key[ASCON_AEAD128_KEY_LEN],
+        uint8_t nonce[ASCON_AEAD_NONCE_LEN]);
 /**
  * Decrypts a message using the ascon cipher 
  * 
@@ -88,7 +88,7 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
  * @param[in] size_t id_len - The length of the id
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
-int sok_gen_sym_key(uint8_t *buf, key_params_t *sender, char *receiver, size_t id_len);
+int sok_gen(uint8_t *buf, key_params_t *sender, char *receiver, size_t id_len);
 
 /**
  *  Derives the full symmetric key from the two partial keys, the upper half 

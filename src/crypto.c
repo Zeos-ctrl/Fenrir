@@ -83,8 +83,8 @@ int gen_params(key_params_t *child, char *child_id, size_t id_len,
 }
 
 int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
-        uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN],
-        uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN])
+        uint8_t *tag, uint8_t key[ASCON_AEAD128_KEY_LEN],
+        uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
     ascon_aead_ctx_t ctx;
     ascon_aead128a_init(&ctx, key, nonce);
@@ -97,9 +97,7 @@ int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
 
     ciphertext_len += ascon_aead128_encrypt_final(
             &ctx, buffer + ciphertext_len,
-            tag, sizeof(*tag));
-
-    printf("Ciphertext: %s\n", buffer);
+            tag, ASCON_AEAD_TAG_MIN_SECURE_LEN);
 
     /* Clean up */
     ascon_aead_cleanup(&ctx);
@@ -121,9 +119,11 @@ int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
 
     plaintext_len += ascon_aead128_decrypt_final(
             &ctx, buffer + plaintext_len,
-            &is_tag_valid, tag, sizeof(tag));
+            &is_tag_valid, tag, ASCON_AEAD_TAG_MIN_SECURE_LEN);
 
     buffer[plaintext_len] = '\0'; // Null terminated, because it's text
+    printf("\nDecrypted msg: %s, tag is valid: %d\n", buffer, is_tag_valid);
+
     ascon_aead_cleanup(&ctx);
 
     return plaintext_len;
@@ -161,9 +161,6 @@ int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_l
     /* Clean up */ 
     EVP_CIPHER_CTX_free(ctx);
 
-    printf("\nCiphertext is: \n");
-    BIO_dump_fp (stdout, (const char *)ciphertext, ciphertext_len);
-
     return ciphertext_len;
 }
 
@@ -174,20 +171,17 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
     int len;
     int plaintext_len;
 
-    printf("Decrypting...\n");
     /* Create and initialise the context */ 
     if(!(ctx = EVP_CIPHER_CTX_new())) {
         printf("Error creating context\n");
         return 1;
     }
-    printf("Context created\n");
 
     /* Initialise the decryption operation. */ 
     if(1 != EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv)) {
         printf("Error initialising decryption\n");
         return 1;
     }
-    printf("Decryption initialised\n");
     /* Provide the message to be decrypted, and obtain the plaintext output.
      * EVP_DecryptUpdate can be called multiple times if necessary
      */ 
@@ -195,7 +189,6 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
         printf("Error decrypting\n");
         return 1;
     } 
-    printf("Decryption updated\n");
     plaintext_len = len;
 
     /* Finalise the decryption. Further plaintext bytes may be written at
@@ -205,21 +198,18 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
         printf("Error finalising\n");
         return 1;
     }
-    printf("Decryption finalised\n");
     plaintext_len += len;
 
     /* Clean up */ 
     EVP_CIPHER_CTX_free(ctx);
     
     /* Add a NULL terminator. We are expecting printable text */ 
-    BIO_dump_fp (stdout, (const char *)decryptedtext, plaintext_len);
     decryptedtext[plaintext_len] = '\0';
-    printf("Decrypted text is: %s\n", decryptedtext);
 
     return plaintext_len;
 }
 
-int sok_gen_sym_key(uint8_t *key, key_params_t *sender, char *receiver, size_t id_len)
+int sok_gen(uint8_t *key, key_params_t *sender, char *receiver, size_t id_len)
 {        
     int first = 0, code = RLC_ERR;
     size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);
@@ -322,11 +312,5 @@ int derive_key(unsigned char *upper, size_t upper_len, unsigned char *lower, siz
 
     memcpy(key, hash, key_len);
 
-    printf("\nDerived Key: ");
-    for (int i = 0; i < 16; i++) {
-        printf("%02x", key[i]);
-    }
-    printf("\n");
-    
     return sizeof(key);
 }

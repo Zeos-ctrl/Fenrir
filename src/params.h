@@ -1,8 +1,7 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
-#define GATEWAY_IP "192.168.1.126"
-#define GATEWAY_PORT 8080
+#define CYPHER 1
 
 /* Ascii art for the banner */
 const char asciiArt[] = 
@@ -14,17 +13,13 @@ const char asciiArt[] =
 "   \\ \\__\\   \\ \\_______\\ \\__\\\\ \\__\\ \\__\\\\ _\\\\ \\__\\ \\__\\\\ _\\\n"
 "    \\|__|    \\|_______|\\|__| \\|__|\\|__|\\|__|\\|__|\\|__|\\|__|";
 
-/* Specifies the device type */
-typedef enum {
-    ROOT = 1,
-    GATEWAY = 2,
-    NODE = 3,
-} DeviceType;
-
 /* Specifies the cypher type */
 typedef enum {
     AES = 1,
     ASCON = 2,
 } Cypher;
+
+/* Associated data for ascon */ 
+const char associatedData[] = "Associated Data";
 
 #endif // !PARAMS_H

@@ -4,33 +4,20 @@
 #include "crypto.h"
 
 /**
- * Sets up the root key server device
+ * Sets up the root key server
  *
- * @param[out] root_key_pair - The key information for the root node
+ * @param[out] root_key_params - The key information for the root node
  * @param[in] identity - The identity of the device
  * @param[in] id_len - The length of the identity
  * @return 0 on success, -1 on failure
  */
-int device_setup_root(key_pair_t *root, char *identity, size_t id_len);
+int setup_root(key_params_t *root, char *identity, size_t id_len);
 
 /**
- * Sets up the gateway device
- *
- * @param[out] gateway_key_pair - The key information for the gateway
- * @param[in] identity - The identity of the device
- * @param[in] id_len - The length of the identity
- * @return 0 on success, -1 on failure
+ * Displays the key parameters to the user
+ * @param[in] params - The key parameters to display
+ * @return void
  */
-int device_setup_gateway(key_pair_t *gateway, char *identity, size_t id_len);
-
-/**
- * Sets up the worker device
- *
- * @param[out] worker_key_pair - The key information for the worker
- * @param[in] identity - The identity of the device
- * @param[in] id_len - The length of the identity
- * @return 0 on success, -1 on failure
- */
-int device_setup_worker(key_pair_t *worker, char *identity, size_t id_len);
+void display_params(key_params_t *params);
 
 #endif // SETUP_H

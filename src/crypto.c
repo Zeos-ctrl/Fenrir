@@ -4,15 +4,17 @@
 #include <openssl/evp.h> /* OpenSSL EVP headers for hashing */
 #include <ascon/ascon.h> /* ASCON AEAD headers for symmetric encryption */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "crypto.h"
+#include "params.h"
 
-int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len, 
-        key_pair_t *parent, bn_t master)
+int gen_params(key_params_t *child, char *child_id, size_t id_len, 
+        key_params_t *parent, bn_t master)
 {
     if (id_len < 0 ) {
         printf("Identity must be larger than 0 bytes\n");
@@ -35,7 +37,9 @@ int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len,
         bn_null(child->secret);
         bn_null(N);
 
-        /* Gen shared value */
+
+        /* Gen new secret number for the child to become a cluster head if 
+         * needed */
         bn_new(N);
         pc_get_ord(N); /* Get the order of the group G1 */
         bn_rand_mod(child->secret, N); /* Gen random number in Zq */
@@ -81,11 +85,13 @@ int bilinear_key_pair(key_pair_t *child, char *child_id, size_t id_len,
 }
 
 int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
-        uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN],
-        uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN])
+        uint8_t *tag, size_t tag_len, uint8_t key[ASCON_AEAD128_KEY_LEN],
+        uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
     ascon_aead_ctx_t ctx;
     ascon_aead128a_init(&ctx, key, nonce);
+
+    ascon_aead128_assoc_data_update(&ctx, (uint8_t *)associatedData, strlen(associatedData));
 
     size_t ciphertext_len = 0;
 
@@ -95,20 +101,22 @@ int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
 
     ciphertext_len += ascon_aead128_encrypt_final(
             &ctx, buffer + ciphertext_len,
-            tag, sizeof(tag));
+            tag, tag_len);
 
-    printf("Ciphertext: %s\n", buffer);
-
+    BIO_dump_fp(stdout, (const char *)tag, tag_len);
     /* Clean up */
     ascon_aead_cleanup(&ctx);
+
     return ciphertext_len;
 }
 
-int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
+int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag, size_t tag_len,
         uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
     ascon_aead_ctx_t ctx;
     ascon_aead128a_init(&ctx, key, nonce);
+    ascon_aead128_assoc_data_update(&ctx, (uint8_t *)associatedData, strlen(associatedData));
+
     size_t plaintext_len = 0;
 
     plaintext_len += ascon_aead128_decrypt_update(
@@ -119,16 +127,24 @@ int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
 
     plaintext_len += ascon_aead128_decrypt_final(
             &ctx, buffer + plaintext_len,
-            &is_tag_valid, tag, sizeof(tag));
+            &is_tag_valid, tag, tag_len);
+
+    if (!is_tag_valid) {
+        printf("Tag is invalid: %d\n", is_tag_valid);
+        BIO_dump_fp(stdout, (const char *)tag, tag_len);
+        return -1;
+    }
 
     buffer[plaintext_len] = '\0'; // Null terminated, because it's text
+    printf("\nDecrypted msg: %s, tag is valid: %d\n", buffer, is_tag_valid);
+
     ascon_aead_cleanup(&ctx);
 
     return plaintext_len;
 }
 
 int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_len,
-        unsigned char *key, unsigned char *iv)
+        unsigned char *key, unsigned char iv[16], size_t iv_len)
 {
     EVP_CIPHER_CTX *ctx;
     int len;
@@ -159,14 +175,11 @@ int aes_enc(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_l
     /* Clean up */ 
     EVP_CIPHER_CTX_free(ctx);
 
-    printf("\nCiphertext is: \n");
-    BIO_dump_fp (stdout, (const char *)ciphertext, ciphertext_len);
-
     return ciphertext_len;
 }
 
 int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphertext_len,
-        unsigned char *key, unsigned char *iv)
+        unsigned char *key, unsigned char iv[16], size_t iv_len)
 {
     EVP_CIPHER_CTX *ctx;
     int len;
@@ -183,7 +196,6 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
         printf("Error initialising decryption\n");
         return 1;
     }
-
     /* Provide the message to be decrypted, and obtain the plaintext output.
      * EVP_DecryptUpdate can be called multiple times if necessary
      */ 
@@ -206,18 +218,16 @@ int aes_dec(unsigned char *decryptedtext, unsigned char *ciphertext, int ciphert
     EVP_CIPHER_CTX_free(ctx);
     
     /* Add a NULL terminator. We are expecting printable text */ 
-    BIO_dump_fp (stdout, (const char *)decryptedtext, plaintext_len);
     decryptedtext[plaintext_len] = '\0';
-    printf("Decrypted text is: %s\n", decryptedtext);
 
     return plaintext_len;
 }
 
-int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_len)
+int sok_gen(uint8_t *key, key_params_t *sender, char *receiver, size_t id_len)
 {        
     int first = 0, code = RLC_ERR;
     size_t size, len1 = strlen((char *)sender->public_key), len2 = strlen(receiver);
-    uint8_t *key;
+    uint8_t *buf, *key2;
     g1_t p;
     g2_t q;
     gt_t e;
@@ -228,12 +238,11 @@ int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_
         gt_new(e);
 
         size = gt_size_bin(e, 0);
-        buf = RLC_ALLOCA(uint8_t, size);
-        if (buf == NULL) {
+        key2 = RLC_ALLOCA(uint8_t, size);
+        if (key2 == NULL) {
             RLC_THROW(ERR_NO_MEMORY);
         }
 
-        printf("Math...\n");
         if (len1 == len2) {
             if (strncmp((char *)sender->public_key, receiver, len1) == 0) {
                 RLC_THROW(ERR_NO_VALID);
@@ -249,7 +258,6 @@ int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_
             }
         }
         
-        printf("Generating shared value...\n");
         if (pc_map_is_type1()) {
             g2_map(q, (uint8_t *)receiver, len2);
             pc_map(e, sender->k1, q);
@@ -263,17 +271,11 @@ int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_
             }
         }
 
-        printf("Writing key to buffer...\n");
-        key = RLC_ALLOCA(uint8_t, 128);
-        gt_write_bin(buf, size, e, 0);
-        md_kdf(key, 128, buf, size);
+        buf = RLC_ALLOCA(uint8_t, 128);
+        gt_write_bin(key2, size, e, 0);
+        md_kdf(buf, 128, key2, size);
 
-        /* Print the key */ 
-        printf("\nKey: ");
-        for (int i = 0; i < 16; i++) {
-            printf("%02x", key[i]);
-        }
-        printf("\n");
+        memcpy(key, buf, sizeof(&key));
 
     } RLC_CATCH_ANY {
         RLC_THROW(ERR_CAUGHT);
@@ -282,9 +284,47 @@ int sok_gen_sym_key(uint8_t *buf, key_pair_t *sender, char *receiver, size_t id_
         g2_free(q);
         gt_free(e);
         RLC_FREE(buf);
-        RLC_FREE(key);
     }
     code = RLC_OK;
  
     return code;
+}
+
+int derive_key(unsigned char *upper, size_t upper_len, unsigned char *lower, size_t lower_len,
+        uint8_t *key, size_t key_len)
+{
+    if (upper_len <= 0 || lower_len <= 0)
+    {
+        printf("Unsupported upper or lower key length...\n");
+        printf("Upper: %ld\n", upper_len);
+        printf("Lower: %ld\n", lower_len);
+        return -1;
+    }
+
+    if (key_len <= 0)
+    {
+        printf("Output key needs to be initialised\n");
+        return -1;
+    }
+
+    uint8_t offset = 0;
+    char buffer[128];
+    memcpy(buffer + offset, upper, 64);
+    offset += 64;
+    memcpy(buffer + offset, lower, 64);
+
+    unsigned int md_len; /* Hash length */
+    EVP_MD_CTX *mdctx; /* Hashing context */
+    unsigned char hash[EVP_MAX_MD_SIZE]; /* Hash value */
+
+    mdctx = EVP_MD_CTX_new(); /* Initialize ctx */ 
+    const EVP_MD *EVP_sha3_256() /* Get the sha3 hash function */;
+
+    EVP_DigestInit_ex(mdctx, EVP_sha3_256(), NULL); /* Initialize the hash function */
+    EVP_DigestUpdate(mdctx, buffer, strlen(buffer)); /* Hash the node ID */
+    EVP_DigestFinal_ex(mdctx, hash, &md_len); /* Finalize the hash function */
+
+    memcpy(key, hash, key_len);
+
+    return sizeof(key);
 }

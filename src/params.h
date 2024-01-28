@@ -1,7 +1,7 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
-#define CYPHER 2
+#define CYPHER 1
 
 /* Ascii art for the banner */
 const char asciiArt[] = 
@@ -18,5 +18,8 @@ typedef enum {
     AES = 1,
     ASCON = 2,
 } Cypher;
+
+/* Associated data for ascon */ 
+const char associatedData[] = "Associated Data";
 
 #endif // !PARAMS_H

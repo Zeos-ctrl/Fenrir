@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
     const uint8_t nonce[ASCON_AEAD_NONCE_LEN] = {
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6
     };
+
     uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN] = {0};
 
     if (CYPHER == AES) {
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
         printf("Ciphertext is: \n");
         BIO_dump_fp(stdout, ciphertext, sizeof(ciphertext));
     } else if (CYPHER == ASCON) {
-        if (ascon_enc(ciphertext, (char *)plaintext, strlen((char *)plaintext), tag,  shared_key, (unsigned char *)nonce) <= 0 ) {
+        if (ascon_enc(ciphertext, (char *)plaintext, strlen((char *)plaintext), tag, sizeof(tag), shared_key, (unsigned char *)nonce) <= 0 ) {
             printf("Failed to encrypt the message using ASCON\n");
             goto exit;
         }
@@ -139,18 +140,22 @@ int main(int argc, char *argv[])
         }
         BIO_dump_fp(stdout, decryptedtext, sizeof(decryptedtext));
         BIO_dump_fp(stdout, plaintext, sizeof(plaintext));
-        if (strcmp((char *)plaintext, (char *)decryptedtext) != 0) {
+        if (strncmp((char *)plaintext, (char *)decryptedtext, sizeof(decryptedtext)) != 0) {
             printf("Decrypted text does not match plaintext\n");
+            goto exit;
         }
+
     } else if (CYPHER == ASCON) {
-        if (ascon_dec((unsigned char *)decryptedtext, sizeof(ciphertext), tag, shared_key, (unsigned char *)nonce) <= 0 ) {
+        if (ascon_dec((unsigned char *)ciphertext, sizeof(ciphertext), tag, sizeof(tag), shared_key, (unsigned char *)nonce) <= 0 ) {
             printf("Failed to decrypt the message using ASCON\n");
             goto exit;
         }
-        BIO_dump_fp(stdout, decryptedtext, sizeof(decryptedtext));
+        BIO_dump_fp(stdout, ciphertext, sizeof(ciphertext));
+        printf("%s\n", ciphertext);
         BIO_dump_fp(stdout, plaintext, sizeof(plaintext));
-        if (strcmp((char *)plaintext, (char *)decryptedtext) != 0) {
+        if (strncmp((char *)plaintext, (char *)ciphertext, sizeof(ciphertext)) != 0) {
             printf("Decrypted text does not match plaintext\n");
+            goto exit;
         }
     } else {
         printf("Unknown cypher\n");

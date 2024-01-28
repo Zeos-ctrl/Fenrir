@@ -4,12 +4,14 @@
 #include <openssl/evp.h> /* OpenSSL EVP headers for hashing */
 #include <ascon/ascon.h> /* ASCON AEAD headers for symmetric encryption */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "crypto.h"
+#include "params.h"
 
 int gen_params(key_params_t *child, char *child_id, size_t id_len, 
         key_params_t *parent, bn_t master)
@@ -83,11 +85,13 @@ int gen_params(key_params_t *child, char *child_id, size_t id_len,
 }
 
 int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
-        uint8_t *tag, uint8_t key[ASCON_AEAD128_KEY_LEN],
+        uint8_t *tag, size_t tag_len, uint8_t key[ASCON_AEAD128_KEY_LEN],
         uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
     ascon_aead_ctx_t ctx;
     ascon_aead128a_init(&ctx, key, nonce);
+
+    ascon_aead128_assoc_data_update(&ctx, (uint8_t *)associatedData, strlen(associatedData));
 
     size_t ciphertext_len = 0;
 
@@ -97,18 +101,22 @@ int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
 
     ciphertext_len += ascon_aead128_encrypt_final(
             &ctx, buffer + ciphertext_len,
-            tag, ASCON_AEAD_TAG_MIN_SECURE_LEN);
+            tag, tag_len);
 
+    BIO_dump_fp(stdout, (const char *)tag, tag_len);
     /* Clean up */
     ascon_aead_cleanup(&ctx);
+
     return ciphertext_len;
 }
 
-int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
+int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag, size_t tag_len,
         uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN])
 {
     ascon_aead_ctx_t ctx;
     ascon_aead128a_init(&ctx, key, nonce);
+    ascon_aead128_assoc_data_update(&ctx, (uint8_t *)associatedData, strlen(associatedData));
+
     size_t plaintext_len = 0;
 
     plaintext_len += ascon_aead128_decrypt_update(
@@ -119,7 +127,13 @@ int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
 
     plaintext_len += ascon_aead128_decrypt_final(
             &ctx, buffer + plaintext_len,
-            &is_tag_valid, tag, ASCON_AEAD_TAG_MIN_SECURE_LEN);
+            &is_tag_valid, tag, tag_len);
+
+    if (!is_tag_valid) {
+        printf("Tag is invalid: %d\n", is_tag_valid);
+        BIO_dump_fp(stdout, (const char *)tag, tag_len);
+        return -1;
+    }
 
     buffer[plaintext_len] = '\0'; // Null terminated, because it's text
     printf("\nDecrypted msg: %s, tag is valid: %d\n", buffer, is_tag_valid);

@@ -32,6 +32,7 @@ int gen_params(key_params_t *child, char *child_id, size_t child_id_len,
  *
  * @param[out] uint8_t *buffer - The buffer to store the ciphertext 
  * @param[out] uint8_t tag - The tag for the ciphertext 
+ * @param[in] size_t tag_len - The length of the tag
  * @param[in] char *plaintext - The plaintext to be encrypted
  * @param[in] size_t plaintext_len - The length of the plaintext 
  * @param[in] uint8_t key - The key to be used for encryption
@@ -39,7 +40,7 @@ int gen_params(key_params_t *child, char *child_id, size_t child_id_len,
  * @return int - length of the ciphertext
  */
 int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
-        uint8_t *tag, uint8_t key[ASCON_AEAD128_KEY_LEN],
+        uint8_t *tag, size_t tag_len, uint8_t key[ASCON_AEAD128_KEY_LEN],
         uint8_t nonce[ASCON_AEAD_NONCE_LEN]);
 /**
  * Decrypts a message using the ascon cipher 
@@ -47,11 +48,12 @@ int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
  * @param[out] uint8_t *buffer - The buffer to store the plaintext 
  * @param[in] size_t ciphertext_len - The length of the ciphertext 
  * @param[in] uint8_t *tag - The tag for the ciphertext 
+ * @param[in] size_t tag_len - The length of the tag
  * @param[in] uint8_t key - The key to be used for decryption
  * @param[in] uint8_t nonce - The nonce to be used for decryption
  * @return int - length of the plaintext
  */
-int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag,
+int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag, size_t tag_len,
         uint8_t key[ASCON_AEAD128_KEY_LEN], uint8_t nonce[ASCON_AEAD_NONCE_LEN]);
 /** 
  * Encrypts a message using the AES cipher 

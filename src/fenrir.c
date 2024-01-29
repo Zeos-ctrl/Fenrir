@@ -60,6 +60,7 @@ int main(int argc, char *argv[])
     rtend = clock();
     rtcpu_time_used = ((double) (rtend - rtstart)) / CLOCKS_PER_SEC;
     printf("Time to generate root parameters: %f\n", rtcpu_time_used);
+    printf("Clock cycles: %ld\n", rtend - rtstart);
     printf("Root parameters generated\n\n");
 
     key_params_t gateway;
@@ -77,6 +78,7 @@ int main(int argc, char *argv[])
     printf("Gateway parameters generated\n\n");
     display_params(&gateway);
     printf("Time to generate gateway parameters: %f\n", gtcpu_time_used);
+    printf("Clock cycles: %ld\n", gtend - gtstart);
 
     key_params_t device;
     char *device_id = "Fenrir.Gateway.Device";
@@ -93,6 +95,7 @@ int main(int argc, char *argv[])
     printf("Device parameters generated\n\n");
     display_params(&device);
     printf("Time to generate device parameters: %f\n", dtcpu_time_used);
+    printf("Clock cycles: %ld\n", dtend - dtstart);
     printf("Test 1: Passed\n\n");
     /* --------------------------------------------------------------------- */
     printf("---------------------------------------------------------------------\n\n");
@@ -110,6 +113,7 @@ int main(int argc, char *argv[])
     sokend = clock();
     sokcpu_time_used = ((double) (sokend - sokstart)) / CLOCKS_PER_SEC;
     printf("Time to generate shared key between gateway and device: %f\n", sokcpu_time_used);
+    printf("Clock cycles: %ld\n", sokend - sokstart);
 
     sokcpu_time_used = 0;
     sokstart = clock();
@@ -120,6 +124,7 @@ int main(int argc, char *argv[])
     sokend = clock();
     sokcpu_time_used = ((double) (sokend - sokstart)) / CLOCKS_PER_SEC;
     printf("Time to generate shared key between device and gateway: %f\n", sokcpu_time_used);
+    printf("Clock cycles: %ld\n", sokend - sokstart);
 
     uint8_t shared_key[16] = {0};
     clock_t drstart, drend;
@@ -132,6 +137,7 @@ int main(int argc, char *argv[])
     drend = clock();
     drcpu_time_used = ((double) (drend - drstart)) / CLOCKS_PER_SEC;
     printf("Time to derive shared key between device and gateway: %f\n", drcpu_time_used);
+    printf("Clock cycles: %ld\n", drend - drstart);
     printf("\nShared key derived: ");
     for (int i = 0; i < sizeof(shared_key); i++) {
         printf("%02x", shared_key[i]);
@@ -167,6 +173,7 @@ int main(int argc, char *argv[])
         printf("Ciphertext is: \n");
         BIO_dump_fp(stdout, ciphertext, sizeof(ciphertext));
         printf("Time to encrypt message using AES: %f\n", enccpu_time_used);
+        printf("Clock cycles: %ld\n", encend - encstart);
     } else if (CYPHER == ASCON) {
         if (ascon_enc(ciphertext, (char *)plaintext, strlen((char *)plaintext), tag, sizeof(tag), shared_key, (unsigned char *)nonce) <= 0 ) {
             printf("Failed to encrypt the message using ASCON\n");
@@ -177,6 +184,7 @@ int main(int argc, char *argv[])
         printf("Ciphertext is: \n");
         BIO_dump_fp(stdout, ciphertext, sizeof(ciphertext));
         printf("Time to encrypt message using ASCON: %f\n", enccpu_time_used);
+        printf("Clock cycles: %ld\n", encend - encstart);
     } else {
         printf("Unknown cypher\n");
         goto exit;
@@ -203,6 +211,7 @@ int main(int argc, char *argv[])
             goto exit;
         }
         printf("Time to decrypt message using AES: %f\n", deccpu_time_used);
+        printf("Clock cycles: %ld\n", decend - decstart);
     } else if (CYPHER == ASCON) {
         if (ascon_dec((unsigned char *)ciphertext, sizeof(ciphertext), tag, sizeof(tag), shared_key, (unsigned char *)nonce) <= 0 ) {
             printf("Failed to decrypt the message using ASCON\n");
@@ -215,6 +224,7 @@ int main(int argc, char *argv[])
             goto exit;
         }
         printf("Time to decrypt message using ASCON: %f\n", deccpu_time_used);
+        printf("Clock cycles: %ld\n", decend - decstart);
     } else {
         printf("Unknown cypher\n");
         goto exit;

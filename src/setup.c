@@ -65,7 +65,6 @@ int setup_root(key_params_t *root, char *identity, size_t id_len)
         /* Compute Q = s * Pubkey */
         g1_mul(root->Q, root->public_key, root->secret);
 
-        display_params(root);
 
     }RLC_CATCH_ANY {
         RLC_THROW(ERR_CAUGHT);

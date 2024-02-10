@@ -14,7 +14,7 @@
 #include "params.h"
 
 int gen_params(key_params_t *child, char *child_id, size_t id_len, 
-        key_params_t *parent, bn_t master)
+        key_params_t *parent, bn_t master, g1_t rp)
 {
     if (id_len < 0 ) {
         printf("Identity must be larger than 0 bytes\n");
@@ -70,7 +70,7 @@ int gen_params(key_params_t *child, char *child_id, size_t id_len,
         g2_mul(child->k2, child->k2, master);
 
         /* Gen public perameter */ 
-        g1_mul(child->Q, parent->Q, master); /* Qx = Qx * x */
+        g1_mul(child->Q, rp, master); /* Qx = Qx * x */
 
     } RLC_CATCH_ANY {
         RLC_THROW(ERR_CAUGHT);
@@ -103,7 +103,6 @@ int ascon_enc(uint8_t *buffer, char *plaintext, size_t plaintext_len,
             &ctx, buffer + ciphertext_len,
             tag, tag_len);
 
-    BIO_dump_fp(stdout, (const char *)tag, tag_len);
     /* Clean up */
     ascon_aead_cleanup(&ctx);
 
@@ -136,7 +135,6 @@ int ascon_dec(uint8_t *buffer, size_t ciphertext_len, uint8_t *tag, size_t tag_l
     }
 
     buffer[plaintext_len] = '\0'; // Null terminated, because it's text
-    printf("\nDecrypted msg: %s, tag is valid: %d\n", buffer, is_tag_valid);
 
     ascon_aead_cleanup(&ctx);
 

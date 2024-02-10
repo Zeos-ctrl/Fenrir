@@ -23,10 +23,11 @@ typedef struct key_params /* Key parameters struct */
  * @param[in] size_t id_len - The length of the id
  * @param[in] key_pair_t *parent - The key pair of the parent node
  * @param[in] bn_t master - The master secret value
+ * @param[in] g1_t rp - The root public key
  * @return int - RLC_OK if successful, RLC_ERR otherwise
  */
 int gen_params(key_params_t *child, char *child_id, size_t child_id_len,
-        key_params_t *parent, bn_t master);
+        key_params_t *parent, bn_t master, g1_t rp);
 /**
  * Encrypts a message using the ascon cipher 
  *

@@ -516,6 +516,38 @@ end:
     return code;
 }
 
+int test_g1_mul(void)
+{
+    g1_t a, b;
+    bn_t c, d;
+
+    int code = RLC_ERR;
+    RLC_TRY {
+        g1_rand(a);
+        g1_copy(b, a);
+        bn_new(c);
+        pc_get_ord(c);
+        bn_new(d);
+        pc_get_ord(d);
+        g1_mul(a, a, c);
+        g1_mul(a, a, d);
+        g1_mul(b, b, c);
+        g1_mul(b, b, d);
+        if (g1_cmp(a, b) != RLC_EQ) {
+            goto end;
+        }
+    } RLC_CATCH_ANY {
+        RLC_THROW(ERR_CAUGHT);
+    } RLC_FINALLY {
+        g1_free(a);
+        bn_free(b);
+        bn_free(c);
+    }
+    code = RLC_OK;
+end:
+    return code;
+}
+
 int main(void)
 {
     printf("Starting tests...\n");
@@ -563,6 +595,12 @@ int main(void)
     if (test_aes() != 0){
         return 1;
     }
+
+    if (test_g1_mul() != RLC_OK){
+        return 1;
+    }
+
+    printf("G1 multiplication test passed!\n");
 
     printf("AES test passed!\n");
 

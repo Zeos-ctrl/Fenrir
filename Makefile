@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -O2
+CFLAGS = -Wall -O2 -pg -g
 
 # RELIC library paths
 RELIC_INCLUDE = /usr/local/include
@@ -19,8 +19,8 @@ SRC_MAIN = src/fenrir.c
 SRC_TEST = tests/test_crypto.c
 
 # Program executable name
-TARGET_MAIN = Fenrir
-TARGET_TEST = Tests
+TARGET_MAIN = fenrir.out
+TARGET_TEST = test.out
 
 all: $(TARGET_MAIN) $(TARGET_TEST)
 

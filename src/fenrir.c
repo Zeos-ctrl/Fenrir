@@ -144,8 +144,8 @@ int main(int argc, char *argv[])
 
     uint8_t tag[ASCON_AEAD_TAG_MIN_SECURE_LEN] = {0};
 
+    start = clock();
     if (CYPHER == AES) {
-        start = clock();
         for (int i = 0; i < ITERATIONS; i++) {
             unsigned char ciphertext[sizeof(plaintext)];
             aes_enc(ciphertext, (unsigned char *)plaintext, strlen((char *)plaintext), shared_key, iv, sizeof(iv));
@@ -159,12 +159,10 @@ int main(int argc, char *argv[])
             goto exit;
         }
     } else if (CYPHER == ASCON) {
-        start = clock();
         for (int i = 0; i < ITERATIONS; i++) {
             unsigned char *ct = malloc(sizeof(plaintext));
             uint8_t *t = malloc(ASCON_AEAD_TAG_MIN_SECURE_LEN);
             ascon_enc(ct, (char *)plaintext, strlen((char *)plaintext), t, sizeof(t), shared_key, (unsigned char *)nonce);
-            BIO_dump_fp(stdout, ct, sizeof(ct));
             free(ct);
             free(t);
         }
@@ -187,9 +185,8 @@ int main(int argc, char *argv[])
 
     double time_taken_dec;
 
+    start = clock();
     if (CYPHER == AES) {
-
-        start = clock();
         for (int i = 0; i < ITERATIONS; i++) {
             unsigned char decryptedtext[sizeof(plaintext)];
             aes_dec((unsigned char *)decryptedtext, ciphertext, sizeof(ciphertext), shared_key, iv, sizeof(iv));
@@ -199,7 +196,6 @@ int main(int argc, char *argv[])
         printf("Time taken to decrypt with AES %d times: %f\n", ITERATIONS, time_taken_dec);
 
     } else if (CYPHER == ASCON) {
-        start = clock();
         for (int i = 0; i < ITERATIONS; i++) {
             unsigned char *ct = malloc(sizeof(ciphertext));
             memcpy(ct, ciphertext, sizeof(ciphertext));

@@ -3,16 +3,16 @@ CC = gcc
 CFLAGS = -Wall -O2 -pg -g
 
 # RELIC library paths
-RELIC_INCLUDE = /usr/local/include
-RELIC_LIB = /usr/local/lib
+RELIC_INCLUDE = ./include
+RELIC_LIB = ./lib
 
 # OpenSSL library paths
 OPENSSL_INCLUDE = /usr/include/openssl
 OPENSSL_LIB = /usr/lib
 
 # Ascon library paths
-ASCON_INCLUDE = /usr/local/include
-ASCON_LIB = /usr/local/lib
+ASCON_INCLUDE = ./include
+ASCON_LIB = ./lib
 
 # Program source files
 SRC_MAIN = src/fenrir.c

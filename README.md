@@ -22,8 +22,9 @@ This project uses the following library's:
 ## Compiling
 
 Follow the installation instructions for the two library's above and then run 
-**make** in the root directory, this will build the two files **Fenrir** and 
-**Tests** in the root directory.
+**make** in the root directory, this will build the two files **fenrir.out** and 
+**test.out** in the root directory. This project also assumes you have **Openssl** 
+installed.
 
 ## Tests 
 
@@ -37,7 +38,3 @@ partial key for both devices on different levels of a hierarchy, combines them
 and hashes the result to generate a 128-bit key.
 3. Message Encryption - Comparing AES-128 and ASCON-128
 4. Message Decryption - Comparing AES-128 and ASCON-128
-
-The results will be collected by running the tests 100 times and getting an 
-average value, the main comparison being between an X86 machine and an arm64 
-one.

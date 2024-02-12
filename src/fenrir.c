@@ -78,8 +78,8 @@ int main(int argc, char *argv[])
     }
 
     end = clock();
-    time_taken = ((double)end - start) / CLOCKS_PER_SEC;
-    printf("Time taken to generate the gateway parameters %d times: %f\n", ITERATIONS, time_taken);
+    double time_taken_gen = ((double)end - start) / CLOCKS_PER_SEC;
+    printf("Time taken to generate the gateway parameters %d times: %f\n", ITERATIONS, time_taken_gen);
     printf("Gateway parameters generated\n\n");
 
     key_params_t device;
@@ -104,8 +104,8 @@ int main(int argc, char *argv[])
         sok_gen(device_pkey, &device, (char *)gateway.public_key, sizeof(gateway.public_key));
     }
     end = clock();
-    time_taken = ((double)end - start) / CLOCKS_PER_SEC;
-    printf("Time taken to derive the shared key using SOK %d times: %f\n", ITERATIONS, time_taken);
+    double time_taken_sok = ((double)end - start) / CLOCKS_PER_SEC;
+    printf("Time taken to derive the shared key using SOK %d times: %f\n", ITERATIONS, time_taken_sok);
 
     sok_gen(gateway_pkey, &gateway, (char *)device.public_key, sizeof(device.public_key));
     sok_gen(device_pkey, &device, (char *)gateway.public_key, sizeof(gateway.public_key));
@@ -118,8 +118,8 @@ int main(int argc, char *argv[])
         derive_key(gateway_pkey, sizeof(gateway_pkey), device_pkey, sizeof(device_pkey), shared_key, sizeof(shared_key));
     }
     end = clock();
-    time_taken = ((double)end - start) / CLOCKS_PER_SEC;
-    printf("Time taken to derive the shared key %d times: %f\n", ITERATIONS, time_taken);
+    double time_taken_der = ((double)end - start) / CLOCKS_PER_SEC;
+    printf("Time taken to derive the shared key %d times: %f\n", ITERATIONS, time_taken_der);
 
     printf("\nShared key derived: ");
     for (int i = 0; i < sizeof(shared_key); i++) {
@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
     printf("Test 3: Encrypt a message using the key in AES and ASCON\n");
     char plaintext[16] = "plaintex";
     unsigned char ciphertext[sizeof(plaintext)];
+    double time_taken_enc;
     
     // AES initializors
     uint8_t iv[16] = {0};
@@ -150,8 +151,8 @@ int main(int argc, char *argv[])
             aes_enc(ciphertext, (unsigned char *)plaintext, strlen((char *)plaintext), shared_key, iv, sizeof(iv));
         }
         end = clock();
-        time_taken = ((double)end - start) / CLOCKS_PER_SEC;
-        printf("Time taken to encrypt with AES %d times: %f\n", ITERATIONS, time_taken);
+        time_taken_enc = ((double)end - start) / CLOCKS_PER_SEC;
+        printf("Time taken to encrypt with AES %d times: %f\n", ITERATIONS, time_taken_enc);
 
         if (aes_enc(ciphertext, (unsigned char *)plaintext, strlen((char *)plaintext), shared_key, iv, sizeof(iv)) <= 0 ) {
             printf("Failed to encrypt the message using AES\n");
@@ -168,8 +169,8 @@ int main(int argc, char *argv[])
             free(t);
         }
         end = clock();
-        time_taken = ((double)end - start) / CLOCKS_PER_SEC;
-        printf("Time taken to encrypt with ASCON %d times: %f\n", ITERATIONS, time_taken);
+        time_taken_enc = ((double)end - start) / CLOCKS_PER_SEC;
+        printf("Time taken to encrypt with ASCON %d times: %f\n", ITERATIONS, time_taken_enc);
 
         if (ascon_enc(ciphertext, (char *)plaintext, strlen((char *)plaintext), tag, sizeof(tag), shared_key, (unsigned char *)nonce) <= 0 ) {
             printf("Failed to encrypt the message using ASCON\n");
@@ -184,6 +185,8 @@ int main(int argc, char *argv[])
     printf("---------------------------------------------------------------------\n\n");
     printf("Test 4: Decrypt the message using the key in AES and ASCON\n");
 
+    double time_taken_dec;
+
     if (CYPHER == AES) {
 
         start = clock();
@@ -192,8 +195,8 @@ int main(int argc, char *argv[])
             aes_dec((unsigned char *)decryptedtext, ciphertext, sizeof(ciphertext), shared_key, iv, sizeof(iv));
         }
         end = clock();
-        time_taken = ((double)end - start) / CLOCKS_PER_SEC;
-        printf("Time taken to decrypt with AES %d times: %f\n", ITERATIONS, time_taken);
+        time_taken_dec = ((double)end - start) / CLOCKS_PER_SEC;
+        printf("Time taken to decrypt with AES %d times: %f\n", ITERATIONS, time_taken_dec);
 
     } else if (CYPHER == ASCON) {
         start = clock();
@@ -204,8 +207,8 @@ int main(int argc, char *argv[])
             free(ct);
         }
         end = clock();
-        time_taken = ((double)end - start) / CLOCKS_PER_SEC;
-        printf("Time taken to decrypt with ASCON %d times: %f\n", ITERATIONS, time_taken);
+        time_taken_dec = ((double)end - start) / CLOCKS_PER_SEC;
+        printf("Time taken to decrypt with ASCON %d times: %f\n", ITERATIONS, time_taken_dec);
     } else {
         printf("Unknown cypher\n");
         goto exit;
@@ -213,6 +216,23 @@ int main(int argc, char *argv[])
     printf("\n\n");
     printf("Test 4: Passed\n\n");
     /* --------------------------------------------------------------------- */ 
+    printf("Adding results to file...\n");
+    FILE *file;
+    if (CYPHER == AES) {
+        file = fopen("aes.csv", "a");
+    } else if (CYPHER == ASCON) {
+        file = fopen("ascon.csv", "a");
+    }
+
+    if (file == NULL) {
+        perror("Error opening file");
+        goto exit;
+    }
+
+    fprintf(file, "%f,%f,%f,%f,%f,%f,%d,\n",
+            time_taken, time_taken_gen, time_taken_sok, time_taken_der,
+            time_taken_enc, time_taken_dec, ITERATIONS);
+    fclose(file);
     printf("Fenrir finished\n");
     core_clean();
     return 0;

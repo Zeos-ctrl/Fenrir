@@ -1,7 +1,7 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
-#define CYPHER 2
+#define CYPHER 1
 
 /* Ascii art for the banner */
 const char asciiArt[] = 

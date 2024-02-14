@@ -2,9 +2,12 @@
 CC = gcc
 CFLAGS = -Wall -O2 -pg -g
 
+# Platform x86 or arm
+PLATFORM = x86
+
 # Common paths
 INCLUDE_DIRS = -I./include -I/usr/include/openssl
-LIB_DIRS = -L./lib -L/usr/lib
+LIB_DIRS = -L./lib/$(PLATFORM) -L/usr/lib
 
 # Libraries to link
 LIBS = -lrelic -lssl -lcrypto -lasconfull
